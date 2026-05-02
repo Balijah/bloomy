@@ -910,6 +910,9 @@ components:
         growingDegreeDaysForecast:
           type: number
           description: Projected GDD over next 15 days
+        accumulatedGDD:
+          type: ["number", "null"]
+          description: Estimated GDD accumulated since planting date
         frostRisk:
           $ref: "#/components/schemas/RiskLevel"
         heatStressRisk:

@@ -277,6 +277,31 @@ export interface ExtremeEvent {
   description: string;
 }
 
+export interface AgricultureInsightsDailyTemp {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  feelsLikeMax?: number | null;
+  feelsLikeMin?: number | null;
+}
+
+export interface AgricultureInsightsDailyPrecip {
+  date: string;
+  precipitation: number;
+  precipitationProbability: number;
+}
+
+export interface AgricultureInsightsDailyWind {
+  date: string;
+  windSpeedMax: number;
+  windGustMax: number;
+}
+
+export interface AgricultureInsightsDailyUV {
+  date: string;
+  uvIndexMax: number;
+}
+
 export interface AgricultureInsights {
   farmProfileId: number;
   cropType: string;
@@ -284,6 +309,8 @@ export interface AgricultureInsights {
   growingDegreeDays: number;
   /** Projected GDD over next 15 days */
   growingDegreeDaysForecast: number;
+  /** Estimated GDD accumulated since planting date */
+  accumulatedGDD?: number | null;
   frostRisk: RiskLevel;
   heatStressRisk: RiskLevel;
   droughtRisk: RiskLevel;
@@ -292,6 +319,10 @@ export interface AgricultureInsights {
   precipitationDeficit: number;
   /** Expected precipitation next 7 days in inches */
   precipitationForecast: number;
+  precipitationDaily?: AgricultureInsightsDailyPrecip[];
+  temperatureDaily?: AgricultureInsightsDailyTemp[];
+  windDaily?: AgricultureInsightsDailyWind[];
+  uvDaily?: AgricultureInsightsDailyUV[];
   /** @nullable */
   soilMoisture?: number | null;
   /** @nullable */

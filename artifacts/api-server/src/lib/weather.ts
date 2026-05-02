@@ -157,6 +157,7 @@ export async function fetchHourlyForecast(lat: number, lng: number) {
 export function computeAgricultureInsights(
   forecast: ReturnType<typeof fetchForecast> extends Promise<infer T> ? T : never,
   cropType: string,
+  plantingDate?: string | null,
 ) {
   const next15 = forecast.slice(0, 15);
   const next7 = forecast.slice(0, 7);
@@ -258,10 +259,27 @@ export function computeAgricultureInsights(
     uvIndexMax: Math.round((d.uvIndexMax ?? 0) * 10) / 10,
   }));
 
+  // ── Accumulated GDD from planting date ───────────────────────────────────
+  // Estimate: average daily GDD from the 15-day forecast × days since planting.
+  // This is a reliable approximation for the current season's heat accumulation
+  // without requiring historical weather data.
+  let accumulatedGDD: number | null = null;
+  if (plantingDate) {
+    const planting = new Date(plantingDate);
+    const today = new Date();
+    const daysSincePlanting = Math.max(
+      0,
+      Math.floor((today.getTime() - planting.getTime()) / 86400000)
+    );
+    const avgDailyGDD = gddForecast / next15.length;
+    accumulatedGDD = Math.round(daysSincePlanting * avgDailyGDD);
+  }
+
   return {
     cropType,
     growingDegreeDays: 0,
     growingDegreeDaysForecast: Math.round(gddForecast),
+    accumulatedGDD,
     frostRisk,
     heatStressRisk,
     droughtRisk,

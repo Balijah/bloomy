@@ -370,6 +370,10 @@ export const GetAgricultureInsightsResponse = zod.object({
   growingDegreeDaysForecast: zod
     .number()
     .describe("Projected GDD over next 15 days"),
+  accumulatedGDD: zod
+    .number()
+    .nullish()
+    .describe("Estimated GDD accumulated since planting date"),
   frostRisk: zod.object({
     level: zod.enum(["none", "low", "moderate", "high", "critical"]),
     description: zod.string(),

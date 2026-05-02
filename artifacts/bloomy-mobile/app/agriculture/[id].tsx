@@ -33,6 +33,7 @@ import PrecipChart from "@/components/PrecipChart";
 import TempChart from "@/components/TempChart";
 import WindChart from "@/components/WindChart";
 import UVChart from "@/components/UVChart";
+import CropStageTracker from "@/components/CropStageTracker";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -419,6 +420,16 @@ export default function AgricultureDetailScreen() {
         <Text style={s.gddLabel}>
           Growing Degree Days (15-day forecast)
         </Text>
+      </View>
+
+      {/* Growth Stage Tracker */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Growth Stage</Text>
+        <CropStageTracker
+          cropType={profile.cropType}
+          accumulatedGDD={insights.accumulatedGDD}
+          farmId={farmId}
+        />
       </View>
 
       {/* Crop Calendar */}

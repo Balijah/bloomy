@@ -194,7 +194,7 @@ router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res)
   }
 
   const forecast = await fetchForecast(loc.lat, loc.lng);
-  const insights = computeAgricultureInsights(forecast, profile.cropType);
+  const insights = computeAgricultureInsights(forecast, profile.cropType, profile.plantingDate);
 
   // ── Farm risk alerts ──────────────────────────────────────────────────────
   // For critical/high risk conditions, create an alert record so the
