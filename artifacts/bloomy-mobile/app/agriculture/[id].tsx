@@ -33,6 +33,9 @@ import PrecipChart from "@/components/PrecipChart";
 import TempChart from "@/components/TempChart";
 import WindChart from "@/components/WindChart";
 import UVChart from "@/components/UVChart";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { generateFarmReportHtml } from "@/lib/farmReport";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "#F23030",
@@ -139,6 +142,7 @@ export default function AgricultureDetailScreen() {
   const farmId = id ? parseInt(id) : 0;
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -152,6 +156,56 @@ export default function AgricultureDetailScreen() {
     setRefreshing(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [queryClient, farmId]);
+
+  const handleShare = useCallback(async () => {
+    if (!profile || !insights || sharing) return;
+    try {
+      setSharing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const locationName =
+        allLocations?.find((l) => l.id === profile.locationId)?.name ?? null;
+      const html = generateFarmReportHtml({
+        profile: {
+          name: profile.name,
+          cropType: profile.cropType,
+          acreage: profile.acreage,
+          soilType: profile.soilType,
+          plantingDate: profile.plantingDate,
+          harvestDate: profile.harvestDate,
+          notes: profile.notes,
+        },
+        locationName,
+        insights: {
+          growingDegreeDaysForecast: insights.growingDegreeDaysForecast,
+          soilMoisture: insights.soilMoisture,
+          evapotranspiration7Day: insights.evapotranspiration7Day,
+          precipitationForecast: insights.precipitationForecast,
+          precipitationDeficit: insights.precipitationDeficit,
+          nextFrostDate: insights.nextFrostDate,
+          frostRisk: insights.frostRisk as any,
+          heatStressRisk: insights.heatStressRisk as any,
+          droughtRisk: insights.droughtRisk as any,
+          harvestDisruptionRisk: insights.harvestDisruptionRisk as any,
+          temperatureDaily: insights.temperatureDaily as any,
+          precipitationDaily: insights.precipitationDaily as any,
+          windDaily: insights.windDaily as any,
+          uvDaily: insights.uvDaily as any,
+          recommendations: insights.recommendations as any,
+        },
+      });
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `${profile.name} — Farm Report`,
+        UTI: "com.adobe.pdf",
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_err) {
+      // sharing cancelled or unsupported — silently ignore
+    } finally {
+      setSharing(false);
+    }
+  }, [profile, insights, allLocations, sharing]);
 
   const { data: profile, isLoading: profileLoading } = useGetFarmProfile(
     farmId,
@@ -319,6 +373,23 @@ export default function AgricultureDetailScreen() {
         >
           <Ionicons name="create-outline" size={17} color={colors.foreground} />
           <Text style={[s.editBtnText, { color: colors.foreground }]}>Edit</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            s.shareBtn,
+            { backgroundColor: colors.primary },
+            pressed && { opacity: 0.75 },
+            sharing && { opacity: 0.6 },
+          ]}
+          onPress={handleShare}
+          disabled={sharing}
+          testID="button-share-report"
+        >
+          {sharing ? (
+            <ActivityIndicator size={15} color="#fff" />
+          ) : (
+            <Ionicons name="share-outline" size={17} color="#fff" />
+          )}
         </Pressable>
       </View>
 
@@ -491,6 +562,32 @@ export default function AgricultureDetailScreen() {
           </View>
         </View>
       )}
+
+      {/* Share Report footer CTA */}
+      <View style={s.shareFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            s.shareFooterBtn,
+            { backgroundColor: colors.primary },
+            pressed && { opacity: 0.8 },
+            sharing && { opacity: 0.6 },
+          ]}
+          onPress={handleShare}
+          disabled={sharing}
+        >
+          {sharing ? (
+            <ActivityIndicator size={16} color="#fff" />
+          ) : (
+            <Ionicons name="share-outline" size={18} color="#fff" />
+          )}
+          <Text style={s.shareFooterBtnText}>
+            {sharing ? "Generating PDF…" : "Share Farm Report"}
+          </Text>
+        </Pressable>
+        <Text style={[s.shareFooterHint, { color: colors.mutedForeground }]}>
+          Exports a one-page PDF summary of conditions, risks, and 7-day forecast
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -650,5 +747,38 @@ const styles = (
       fontFamily: "Outfit_400Regular",
       color: colors.foreground,
       lineHeight: 21,
+    },
+    shareBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+    },
+    shareFooter: {
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 4,
+      gap: 8,
+    },
+    shareFooterBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: colors.radius,
+    },
+    shareFooterBtnText: {
+      fontSize: 15,
+      fontFamily: "Outfit_600SemiBold",
+      color: "#fff",
+    },
+    shareFooterHint: {
+      fontSize: 12,
+      fontFamily: "Outfit_400Regular",
+      textAlign: "center",
+      lineHeight: 17,
     },
   });
