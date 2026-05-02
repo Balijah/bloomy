@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import { useGeofencing } from "@/contexts/GeofencingContext";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   free: { label: "Free", color: "#6E736E" },
@@ -172,6 +173,13 @@ export default function SettingsScreen() {
     requestAndEnable,
     setEnabled,
   } = useNotifications();
+  const {
+    locationPermission,
+    geofencingEnabled,
+    geofencingActive,
+    requestLocationPermission,
+    setGeofencingEnabled,
+  } = useGeofencing();
 
   const { data: user, isLoading: isUserLoading } = useGetMe();
   const { data: sub } = useGetCurrentSubscription();
@@ -197,6 +205,23 @@ export default function SettingsScreen() {
     }
     Haptics.selectionAsync();
     await setEnabled(val);
+  }
+
+  async function handleToggleGeofencing(val: boolean) {
+    if (notifUnavailable) return;
+    Haptics.selectionAsync();
+    if (val && locationPermission === "denied") {
+      Alert.alert(
+        "Location Required",
+        "Background location access is blocked. Open Settings to allow Bloomy to use location in the background.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+    await setGeofencingEnabled(val);
   }
 
   async function handleOpenSettings() {
@@ -267,6 +292,21 @@ export default function SettingsScreen() {
       </View>
     );
   }
+
+  // Geofencing status label + colour
+  const geofenceStatusText = (() => {
+    if (notifUnavailable) return null;
+    if (!enabled) return null;
+    if (locationPermission === "denied") return "Location access blocked";
+    if (locationPermission === "foreground_only")
+      return "Background location required";
+    if (geofencingActive) return "Active · notifies on farm arrival";
+    if (geofencingEnabled) return "Starting…";
+    return null;
+  })();
+
+  const geofenceStatusColor =
+    geofencingActive ? colors.primary : colors.mutedForeground;
 
   return (
     <ScrollView
@@ -348,6 +388,7 @@ export default function SettingsScreen() {
           </>
         ) : (
           <>
+            {/* Weather alerts toggle */}
             <SettingRow
               icon={enabled ? "notifications" : "notifications-outline"}
               label="Weather Alerts"
@@ -365,18 +406,15 @@ export default function SettingsScreen() {
                 />
               }
             />
+
             {enabled && (
               <>
+                {/* Background poll status */}
                 <Divider />
-                {/* Background fetch status row */}
                 <View style={s(colors).statusRow}>
                   <Ionicons
-                    name={
-                      backgroundFetchActive
-                        ? "time-outline"
-                        : "time-outline"
-                    }
-                    size={16}
+                    name="time-outline"
+                    size={15}
                     color={
                       backgroundFetchActive
                         ? colors.primary
@@ -398,21 +436,129 @@ export default function SettingsScreen() {
                       : "Background polling unavailable in Expo Go"}
                   </Text>
                 </View>
+
+                {/* Farm arrival alerts toggle */}
                 <Divider />
-                <View style={s(colors).notifInfoRow}>
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={16}
-                    color={colors.mutedForeground}
-                  />
-                  <Text style={s(colors).notifInfoText}>
-                    You'll be notified when frost, extreme heat, or severe
-                    weather is detected for your locations — even when the app
-                    is closed.
-                  </Text>
-                </View>
+                <SettingRow
+                  icon={geofencingEnabled ? "navigate" : "navigate-outline"}
+                  label="Farm Arrival Alerts"
+                  testID="row-geofencing-toggle"
+                  right={
+                    <Switch
+                      value={geofencingEnabled}
+                      onValueChange={handleToggleGeofencing}
+                      trackColor={{
+                        false: colors.muted,
+                        true: colors.primary + "88",
+                      }}
+                      thumbColor={
+                        geofencingEnabled
+                          ? colors.primary
+                          : colors.mutedForeground
+                      }
+                      testID="switch-geofencing"
+                    />
+                  }
+                />
+
+                {/* Geofencing permission / status info */}
+                {geofencingEnabled && (
+                  <>
+                    {locationPermission === "foreground_only" && (
+                      <>
+                        <Divider />
+                        <Pressable
+                          style={({ pressed }) => [
+                            s(colors).openSettingsBtn,
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={handleOpenSettings}
+                          testID="button-open-settings-location"
+                        >
+                          <Ionicons
+                            name="settings-outline"
+                            size={15}
+                            color={colors.primary}
+                          />
+                          <Text style={s(colors).openSettingsBtnText}>
+                            Allow "Always" location access in Settings for
+                            background alerts
+                          </Text>
+                        </Pressable>
+                      </>
+                    )}
+
+                    {locationPermission === "undetermined" && (
+                      <>
+                        <Divider />
+                        <Pressable
+                          style={({ pressed }) => [
+                            s(colors).enableNotifBtn,
+                            { margin: 12 },
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={requestLocationPermission}
+                          testID="button-request-location"
+                        >
+                          <Ionicons
+                            name="location-outline"
+                            size={18}
+                            color={colors.primaryForeground}
+                          />
+                          <Text style={s(colors).enableNotifBtnText}>
+                            Allow Background Location
+                          </Text>
+                        </Pressable>
+                      </>
+                    )}
+
+                    {geofenceStatusText && (
+                      <>
+                        <Divider />
+                        <View style={s(colors).statusRow}>
+                          <Ionicons
+                            name={
+                              geofencingActive
+                                ? "radio-button-on-outline"
+                                : "radio-button-off-outline"
+                            }
+                            size={15}
+                            color={geofenceStatusColor}
+                          />
+                          <Text
+                            style={[
+                              s(colors).statusText,
+                              { color: geofenceStatusColor },
+                            ]}
+                          >
+                            {geofenceStatusText}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {!geofencingEnabled && (
+                  <>
+                    <Divider />
+                    <View style={s(colors).notifInfoRow}>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={16}
+                        color={colors.mutedForeground}
+                      />
+                      <Text style={s(colors).notifInfoText}>
+                        Enable Farm Arrival Alerts to receive a notification
+                        whenever you physically arrive at a saved farm location
+                        with active weather alerts.
+                      </Text>
+                    </View>
+                  </>
+                )}
               </>
             )}
+
             {permission !== "granted" && !enabled && (
               <>
                 <Divider />

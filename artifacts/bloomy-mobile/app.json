@@ -17,11 +17,23 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.bloomy.app",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification",
+          "location"
+        ],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Bloomy uses your background location to notify you of active weather alerts when you arrive at your farm locations.",
+        "NSLocationAlwaysUsageDescription": "Bloomy uses your background location to notify you of active weather alerts when you arrive at your farm locations.",
+        "NSLocationWhenInUseUsageDescription": "Bloomy uses your location to show local weather and alert you when you arrive at a farm with active alerts."
       }
     },
     "android": {
-      "package": "com.bloomy.app"
+      "package": "com.bloomy.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -44,7 +56,16 @@
         }
       ],
       "expo-background-fetch",
-      "expo-task-manager"
+      "expo-task-manager",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Bloomy uses your background location to notify you of active weather alerts when you arrive at your farm locations.",
+          "locationAlwaysPermission": "Bloomy uses your background location to notify you of active weather alerts when you arrive at your farm locations.",
+          "locationWhenInUsePermission": "Bloomy uses your location to show local weather and alert you when you arrive at a farm with active alerts.",
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -18,15 +18,18 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GeofencingProvider, useGeofencing } from "@/contexts/GeofencingContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
+// Side-effect imports: register TaskManager tasks before any component renders
+import "@/utils/backgroundAlerts";
+import "@/utils/geofencing";
 import {
   BG_AUTH_TOKEN_KEY,
   BG_BASE_URL_KEY,
   clearBackgroundCredentials,
 } from "@/utils/backgroundAlerts";
-// Side-effect import: registers the TaskManager task at module level
-import "@/utils/backgroundAlerts";
 import { tokenCache } from "@/utils/tokenCache";
+import { useGetLocations } from "@workspace/api-client-react";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
@@ -47,6 +50,7 @@ const queryClient = new QueryClient({
 
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
+// Keeps the stored Clerk token fresh for the background task (refreshed every 45 s)
 function AuthTokenBridge() {
   const { getToken, isSignedIn } = useAuth();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -55,9 +59,6 @@ function AuthTokenBridge() {
     setAuthTokenGetter(() => getToken());
   }, [getToken]);
 
-  // Keep the background task's stored credentials fresh while the user is signed in.
-  // Clerk tokens expire after ~60 s — we refresh every 45 s so the background task
-  // always finds a token that is at most one window old (acceptable for a 15 min poll).
   useEffect(() => {
     if (Platform.OS === "web") return;
 
@@ -77,7 +78,7 @@ function AuthTokenBridge() {
           ]);
         }
       } catch {
-        // getToken may throw if the session has ended
+        // Session may have ended
       }
     }
 
@@ -88,6 +89,26 @@ function AuthTokenBridge() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [getToken, isSignedIn]);
+
+  return null;
+}
+
+// Caches the user's farm locations to AsyncStorage and keeps geofences up to date
+function LocationsCacheBridge() {
+  const { data: locations } = useGetLocations();
+  const { updateGeofences } = useGeofencing();
+
+  useEffect(() => {
+    if (!locations || Platform.OS === "web") return;
+    updateGeofences(
+      locations.map((l) => ({
+        id: l.id,
+        name: l.name,
+        lat: l.lat,
+        lng: l.lng,
+      }))
+    );
+  }, [locations, updateGeofences]);
 
   return null;
 }
@@ -116,6 +137,7 @@ function RootLayoutNav() {
   return (
     <>
       <AuthTokenBridge />
+      <LocationsCacheBridge />
       <NotificationResponseHandler />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -152,11 +174,13 @@ export default function RootLayout() {
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
             <NotificationsProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
+              <GeofencingProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </GeofencingProvider>
             </NotificationsProvider>
           </QueryClientProvider>
         </ErrorBoundary>
