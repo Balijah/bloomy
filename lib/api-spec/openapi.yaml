@@ -1187,6 +1187,56 @@ components:
         notes:
           type: ["string", "null"]
 
+    AgricultureInsightsDailyTemp:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        tempMax:
+          type: number
+        tempMin:
+          type: number
+        feelsLikeMax:
+          type: ["number", "null"]
+        feelsLikeMin:
+          type: ["number", "null"]
+      required: [date, tempMax, tempMin]
+
+    AgricultureInsightsDailyPrecip:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        precipitation:
+          type: number
+        precipitationProbability:
+          type: number
+      required: [date, precipitation, precipitationProbability]
+
+    AgricultureInsightsDailyWind:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        windSpeedMax:
+          type: number
+        windGustMax:
+          type: number
+      required: [date, windSpeedMax, windGustMax]
+
+    AgricultureInsightsDailyUV:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        uvIndexMax:
+          type: number
+      required: [date, uvIndexMax]
+
     AgricultureInsights:
       type: object
       properties:
@@ -1232,6 +1282,22 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExtremeEvent"
+        temperatureDaily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgricultureInsightsDailyTemp"
+        precipitationDaily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgricultureInsightsDailyPrecip"
+        windDaily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgricultureInsightsDailyWind"
+        uvDaily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgricultureInsightsDailyUV"
         updatedAt:
           type: string
           format: date-time
@@ -1248,6 +1314,10 @@ components:
         - precipitationForecast
         - recommendations
         - extremeEventsNext15Days
+        - temperatureDaily
+        - precipitationDaily
+        - windDaily
+        - uvDaily
         - updatedAt
 
     RiskLevel:

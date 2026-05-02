@@ -553,6 +553,35 @@ export const GetAgricultureInsightsResponse = zod.object({
       description: zod.string(),
     }),
   ),
+  temperatureDaily: zod.array(
+    zod.object({
+      date: zod.coerce.date(),
+      tempMax: zod.number(),
+      tempMin: zod.number(),
+      feelsLikeMax: zod.number().nullish(),
+      feelsLikeMin: zod.number().nullish(),
+    }),
+  ),
+  precipitationDaily: zod.array(
+    zod.object({
+      date: zod.coerce.date(),
+      precipitation: zod.number(),
+      precipitationProbability: zod.number(),
+    }),
+  ),
+  windDaily: zod.array(
+    zod.object({
+      date: zod.coerce.date(),
+      windSpeedMax: zod.number(),
+      windGustMax: zod.number(),
+    }),
+  ),
+  uvDaily: zod.array(
+    zod.object({
+      date: zod.coerce.date(),
+      uvIndexMax: zod.number(),
+    }),
+  ),
   updatedAt: zod.coerce.date(),
 });
 

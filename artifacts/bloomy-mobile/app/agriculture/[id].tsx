@@ -151,6 +151,21 @@ export default function AgricultureDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState(false);
 
+  const { data: profile, isLoading: profileLoading } = useGetFarmProfile(
+    farmId,
+    { query: { enabled: !!farmId, queryKey: getGetFarmProfileQueryKey(farmId) } }
+  );
+  const { data: insights, isLoading: insightsLoading } =
+    useGetAgricultureInsights(farmId, {
+      query: {
+        enabled: !!farmId,
+        queryKey: getGetAgricultureInsightsQueryKey(farmId),
+      },
+    });
+  const { data: allLocations } = useGetLocations();
+  const { data: allFarms } = useGetFarmProfiles();
+  const { data: alerts } = useGetAlerts({});
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
@@ -213,21 +228,6 @@ export default function AgricultureDetailScreen() {
       setSharing(false);
     }
   }, [profile, insights, allLocations, sharing]);
-
-  const { data: profile, isLoading: profileLoading } = useGetFarmProfile(
-    farmId,
-    { query: { enabled: !!farmId, queryKey: getGetFarmProfileQueryKey(farmId) } }
-  );
-  const { data: insights, isLoading: insightsLoading } =
-    useGetAgricultureInsights(farmId, {
-      query: {
-        enabled: !!farmId,
-        queryKey: getGetAgricultureInsightsQueryKey(farmId),
-      },
-    });
-  const { data: allLocations } = useGetLocations();
-  const { data: allFarms } = useGetFarmProfiles();
-  const { data: alerts } = useGetAlerts({});
 
   const isLoading = profileLoading || insightsLoading;
 

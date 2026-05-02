@@ -360,6 +360,33 @@ export interface UpdateFarmProfileBody {
   notes?: string | null;
 }
 
+export interface AgricultureInsightsDailyTemp {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  /** @nullable */
+  feelsLikeMax?: number | null;
+  /** @nullable */
+  feelsLikeMin?: number | null;
+}
+
+export interface AgricultureInsightsDailyPrecip {
+  date: string;
+  precipitation: number;
+  precipitationProbability: number;
+}
+
+export interface AgricultureInsightsDailyWind {
+  date: string;
+  windSpeedMax: number;
+  windGustMax: number;
+}
+
+export interface AgricultureInsightsDailyUV {
+  date: string;
+  uvIndexMax: number;
+}
+
 export type RiskLevelLevel =
   (typeof RiskLevelLevel)[keyof typeof RiskLevelLevel];
 
@@ -438,6 +465,10 @@ export interface AgricultureInsights {
   nextFrostDate?: string | null;
   recommendations: string[];
   extremeEventsNext15Days: ExtremeEvent[];
+  temperatureDaily: AgricultureInsightsDailyTemp[];
+  precipitationDaily: AgricultureInsightsDailyPrecip[];
+  windDaily: AgricultureInsightsDailyWind[];
+  uvDaily: AgricultureInsightsDailyUV[];
   updatedAt: string;
 }
 
