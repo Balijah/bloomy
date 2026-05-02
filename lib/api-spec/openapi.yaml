@@ -501,6 +501,40 @@ paths:
           required: false
           schema:
             type: boolean
+        - name: farmProfileId
+          in: query
+          required: false
+          schema:
+            type: ["integer", "null"]
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [extreme, severe, moderate, minor, critical, warning]
+        - name: alertType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (inclusive lower bound on triggeredAt)
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (inclusive upper bound on triggeredAt)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Maximum number of results (default 200)
       responses:
         "200":
           description: List of alerts

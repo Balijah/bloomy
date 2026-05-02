@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { db, alertsTable, alertPreferencesTable } from "@workspace/db";
 import {
   GetAlertsQueryParams,
@@ -32,11 +32,24 @@ router.get("/alerts", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  let query = db.select().from(alertsTable).where(eq(alertsTable.userId, userId)).orderBy(desc(alertsTable.triggeredAt)).$dynamic();
+  const { unreadOnly, farmProfileId, severity, alertType, dateFrom, dateTo, limit } = params.data;
 
-  const rows = await query;
-  const filtered = params.data.unreadOnly ? rows.filter(r => !r.isRead) : rows;
-  res.json(GetAlertsResponse.parse(filtered));
+  const conditions: ReturnType<typeof eq>[] = [eq(alertsTable.userId, userId)];
+  if (unreadOnly) conditions.push(eq(alertsTable.isRead, false));
+  if (farmProfileId != null) conditions.push(eq(alertsTable.farmProfileId, farmProfileId));
+  if (severity) conditions.push(eq(alertsTable.severity, severity));
+  if (alertType) conditions.push(eq(alertsTable.type, alertType));
+  if (dateFrom) conditions.push(gte(alertsTable.triggeredAt, new Date(dateFrom)));
+  if (dateTo) conditions.push(lte(alertsTable.triggeredAt, new Date(dateTo)));
+
+  let q = db.select().from(alertsTable)
+    .where(and(...conditions))
+    .orderBy(desc(alertsTable.triggeredAt))
+    .$dynamic();
+  if (limit) q = q.limit(limit);
+
+  const rows = await q;
+  res.json(GetAlertsResponse.parse(rows));
 });
 
 router.get("/alerts/active", requireAuth, async (req, res): Promise<void> => {

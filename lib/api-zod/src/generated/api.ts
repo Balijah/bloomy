@@ -561,6 +561,14 @@ export const GetAgricultureInsightsResponse = zod.object({
  */
 export const GetAlertsQueryParams = zod.object({
   unreadOnly: zod.coerce.boolean().optional(),
+  farmProfileId: zod.coerce.number().nullish(),
+  severity: zod
+    .enum(["extreme", "severe", "moderate", "minor", "critical", "warning"])
+    .optional(),
+  alertType: zod.coerce.string().optional(),
+  dateFrom: zod.coerce.string().optional(),
+  dateTo: zod.coerce.string().optional(),
+  limit: zod.coerce.number().optional(),
 });
 
 export const GetAlertsResponseItem = zod.object({

@@ -214,6 +214,10 @@ function RootLayoutNav() {
           name="agriculture/[id]"
           options={{ headerShown: false, presentation: "card" }}
         />
+        <Stack.Screen
+          name="alerts/history"
+          options={{ headerShown: false, presentation: "card" }}
+        />
       </Stack>
     </>
   );

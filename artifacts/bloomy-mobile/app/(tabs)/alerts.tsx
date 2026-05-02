@@ -6,6 +6,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -137,6 +138,17 @@ export default function AlertsScreen() {
             <Text style={s(colors).notifPillText}>On</Text>
           </View>
         )}
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => router.push("/alerts/history")}
+          style={({ pressed }) => [
+            s(colors).historyBtn,
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Ionicons name="time-outline" size={16} color={colors.primary} />
+          <Text style={s(colors).historyBtnText}>History</Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -306,6 +318,21 @@ const s = (colors: ReturnType<typeof useColors>) =>
     notifPillText: {
       fontSize: 11,
       fontFamily: "Outfit_500Medium",
+      color: colors.primary,
+    },
+    historyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: colors.primary + "14",
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginBottom: 4,
+    },
+    historyBtnText: {
+      fontSize: 12,
+      fontFamily: "Outfit_600SemiBold",
       color: colors.primary,
     },
     listContent: { padding: 16, gap: 10 },

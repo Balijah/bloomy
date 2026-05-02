@@ -661,7 +661,37 @@ export type GetHourlyForecastParams = {
 
 export type GetAlertsParams = {
   unreadOnly?: boolean;
+  /**
+   * @nullable
+   */
+  farmProfileId?: number | null;
+  severity?: GetAlertsSeverity;
+  alertType?: string;
+  /**
+   * ISO date string (inclusive lower bound on triggeredAt)
+   */
+  dateFrom?: string;
+  /**
+   * ISO date string (inclusive upper bound on triggeredAt)
+   */
+  dateTo?: string;
+  /**
+   * Maximum number of results (default 200)
+   */
+  limit?: number;
 };
+
+export type GetAlertsSeverity =
+  (typeof GetAlertsSeverity)[keyof typeof GetAlertsSeverity];
+
+export const GetAlertsSeverity = {
+  extreme: "extreme",
+  severe: "severe",
+  moderate: "moderate",
+  minor: "minor",
+  critical: "critical",
+  warning: "warning",
+} as const;
 
 export type GetDashboardSummaryParams = {
   /**
