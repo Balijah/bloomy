@@ -34,6 +34,7 @@ import TempChart from "@/components/TempChart";
 import WindChart from "@/components/WindChart";
 import UVChart from "@/components/UVChart";
 import CropStageTracker from "@/components/CropStageTracker";
+import YieldForecastCard from "@/components/YieldForecastCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -430,6 +431,12 @@ export default function AgricultureDetailScreen() {
           accumulatedGDD={insights.accumulatedGDD}
           farmId={farmId}
         />
+      </View>
+
+      {/* Yield Forecast */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Yield Forecast</Text>
+        <YieldForecastCard insights={insights} />
       </View>
 
       {/* Crop Calendar */}
