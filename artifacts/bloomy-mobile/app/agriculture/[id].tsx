@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import FarmMap from "@/components/FarmMap";
 import CropCalendar from "@/components/CropCalendar";
+import PrecipChart from "@/components/PrecipChart";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "#F23030",
@@ -434,6 +435,14 @@ export default function AgricultureDetailScreen() {
           )}
         </View>
       </View>
+
+      {/* Precipitation Chart */}
+      {insights.precipitationDaily && insights.precipitationDaily.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Precipitation Forecast</Text>
+          <PrecipChart data={insights.precipitationDaily} />
+        </View>
+      )}
 
       {/* Recommendations */}
       {insights.recommendations && insights.recommendations.length > 0 && (

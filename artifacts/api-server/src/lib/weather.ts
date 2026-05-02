@@ -233,6 +233,12 @@ export function computeAgricultureInsights(
   if (harvestDisruptionRisk.level !== "none") recommendations.push("Plan field operations around dry windows to avoid harvest delays.");
   if (recommendations.length === 0) recommendations.push("Conditions look favorable for the next 15 days.");
 
+  const precipitationDaily = next7.map((d: any) => ({
+    date: d.date,
+    precipitation: Math.round(d.precipitation * 100) / 100,
+    precipitationProbability: d.precipitationProbability ?? 0,
+  }));
+
   return {
     cropType,
     growingDegreeDays: 0,
@@ -243,6 +249,7 @@ export function computeAgricultureInsights(
     harvestDisruptionRisk,
     precipitationDeficit: Math.round(precipDeficit * 100) / 100,
     precipitationForecast: Math.round(precipForecast * 100) / 100,
+    precipitationDaily,
     soilMoisture,
     evapotranspiration7Day: evapotranspiration7Day ? Math.round(evapotranspiration7Day * 100) / 100 : null,
     nextFrostDate,
