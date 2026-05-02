@@ -437,6 +437,46 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
 
+                {/* Farm risk alerts info */}
+                <Divider />
+                <SettingRow
+                  icon="leaf-outline"
+                  label="Farm Risk Alerts"
+                  right={
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: colors.primary,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontFamily: "Outfit_400Regular",
+                          color: colors.primary,
+                        }}
+                      >
+                        On
+                      </Text>
+                    </View>
+                  }
+                />
+                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Outfit_400Regular",
+                      color: colors.mutedForeground,
+                      lineHeight: 17,
+                    }}
+                  >
+                    Critical frost, heat stress, drought, and harvest disruption risks detected on your farms will automatically create alerts. Tap a farm alert notification to jump straight to that farm's detail screen.
+                  </Text>
+                </View>
+
                 {/* Farm arrival alerts toggle */}
                 <Divider />
                 <SettingRow

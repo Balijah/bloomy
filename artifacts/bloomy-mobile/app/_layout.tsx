@@ -123,7 +123,9 @@ function NotificationResponseHandler() {
           string,
           unknown
         >;
-        if (data?.screen === "alerts" || data?.alertId) {
+        if (data?.screen === "farm" && data?.farmProfileId) {
+          router.push(`/agriculture/${data.farmProfileId}` as any);
+        } else if (data?.screen === "alerts" || data?.alertId) {
           router.push("/(tabs)/alerts");
         }
       }

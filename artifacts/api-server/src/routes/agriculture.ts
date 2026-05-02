@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, farmProfilesTable, locationsTable } from "@workspace/db";
+import { eq, and, gte } from "drizzle-orm";
+import { db, farmProfilesTable, locationsTable, alertsTable } from "@workspace/db";
 import {
   GetFarmProfilesResponse,
   GetFarmProfileParams,
@@ -156,6 +156,90 @@ router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res)
 
   const forecast = await fetchForecast(loc.lat, loc.lng);
   const insights = computeAgricultureInsights(forecast, profile.cropType);
+
+  // ── Farm risk alerts ──────────────────────────────────────────────────────
+  // For critical/high risk conditions, create an alert record so the
+  // background notification task picks it up automatically.
+  // Throttled to one alert per risk type per farm per 12 hours.
+  const THROTTLE_MS = 12 * 60 * 60 * 1000;
+  const throttleFrom = new Date(Date.now() - THROTTLE_MS);
+
+  type RiskLevel = { level: string; description: string } | undefined | null;
+  const riskMap: Array<{
+    risk: RiskLevel;
+    type: "frost" | "heat_stress" | "drought" | "harvest_disruption";
+    title: (farmName: string) => string;
+  }> = [
+    {
+      risk: insights.frostRisk as RiskLevel,
+      type: "frost",
+      title: (n) => `Frost Risk — ${n}`,
+    },
+    {
+      risk: insights.heatStressRisk as RiskLevel,
+      type: "heat_stress",
+      title: (n) => `Heat Stress — ${n}`,
+    },
+    {
+      risk: insights.droughtRisk as RiskLevel,
+      type: "drought",
+      title: (n) => `Drought Risk — ${n}`,
+    },
+    {
+      risk: insights.harvestDisruptionRisk as RiskLevel,
+      type: "harvest_disruption",
+      title: (n) => `Harvest Disruption — ${n}`,
+    },
+  ];
+
+  const RISK_TO_SEVERITY: Record<string, "watch" | "warning" | "critical"> = {
+    critical: "critical",
+    high:     "warning",
+    moderate: "watch",
+  };
+
+  // Run alert creation in the background — don't block the response
+  (async () => {
+    try {
+      for (const { risk, type, title } of riskMap) {
+        if (!risk) continue;
+        const level = risk.level?.toLowerCase();
+        const severity = RISK_TO_SEVERITY[level];
+        if (!severity) continue; // skip "low" / "none"
+
+        // Check if a recent unread alert of this type already exists for this farm
+        const recent = await db
+          .select({ id: alertsTable.id })
+          .from(alertsTable)
+          .where(
+            and(
+              eq(alertsTable.userId, userId),
+              eq(alertsTable.farmProfileId, profile.id),
+              eq(alertsTable.type, type),
+              eq(alertsTable.isRead, false),
+              gte(alertsTable.triggeredAt, throttleFrom)
+            )
+          )
+          .limit(1);
+
+        if (recent.length > 0) continue; // already notified recently
+
+        await db.insert(alertsTable).values({
+          userId,
+          farmProfileId: profile.id,
+          locationId: profile.locationId,
+          type,
+          severity,
+          title: title(profile.name),
+          message: risk.description,
+          isRead: false,
+          expiresAt: new Date(Date.now() + THROTTLE_MS * 2),
+        });
+      }
+    } catch {
+      // Non-critical — never fail the request due to alert creation
+    }
+  })();
 
   res.json(GetAgricultureInsightsResponse.parse({
     farmProfileId: profile.id,

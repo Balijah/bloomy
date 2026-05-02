@@ -31,6 +31,7 @@ interface AlertItem {
   severity?: string | null;
   alertType?: string;
   isRead: boolean;
+  farmProfileId?: number | null;
 }
 
 const SEVERITY_PRIORITY: Record<string, number> = {
@@ -56,11 +57,16 @@ async function fireNotificationsForAlerts(alerts: AlertItem[]): Promise<void> {
   );
 
   if (sorted.length === 1) {
+    const single = sorted[0];
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: sorted[0].title,
-        body: sorted[0].message.slice(0, 140),
-        data: { alertId: sorted[0].id, screen: "alerts" },
+        title: single.title,
+        body: single.message.slice(0, 140),
+        data: {
+          alertId: single.id,
+          screen: single.farmProfileId ? "farm" : "alerts",
+          ...(single.farmProfileId ? { farmProfileId: single.farmProfileId } : {}),
+        },
         sound: "default",
         badge: unread.length,
       },
