@@ -355,6 +355,118 @@ paths:
         "404":
           description: Not found
 
+  /agriculture/farm-profiles/{id}/field-notes:
+    get:
+      operationId: getFieldNotes
+      tags: [agriculture]
+      summary: List scouting notes for a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of field notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FieldNote"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+    post:
+      operationId: createFieldNote
+      tags: [agriculture]
+      summary: Create a scouting note for a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFieldNoteBody"
+      responses:
+        "201":
+          description: Created field note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldNote"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+
+  /agriculture/farm-profiles/{id}/field-notes/{noteId}:
+    put:
+      operationId: updateFieldNote
+      tags: [agriculture]
+      summary: Update a scouting note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFieldNoteBody"
+      responses:
+        "200":
+          description: Updated field note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldNote"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Note not found
+    delete:
+      operationId: deleteFieldNote
+      tags: [agriculture]
+      summary: Delete a scouting note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Note not found
+
   /agriculture/insights/{farmProfileId}:
     get:
       operationId: getAgricultureInsights
@@ -811,6 +923,96 @@ components:
         - weatherCode
         - weatherDescription
         - isDay
+
+    FieldNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        farmProfileId:
+          type: integer
+        userId:
+          type: integer
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [pest, disease, soil, weather, irrigation, general]
+        severity:
+          type: ["string", "null"]
+          enum: [low, medium, high, critical, null]
+        title:
+          type: string
+        body:
+          type: string
+        photoData:
+          type: ["array", "null"]
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - farmProfileId
+        - userId
+        - date
+        - category
+        - title
+        - body
+        - createdAt
+        - updatedAt
+
+    CreateFieldNoteBody:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [pest, disease, soil, weather, irrigation, general]
+        severity:
+          type: ["string", "null"]
+          enum: [low, medium, high, critical, null]
+        title:
+          type: string
+        body:
+          type: string
+        photoData:
+          type: ["array", "null"]
+          items:
+            type: string
+      required:
+        - date
+        - category
+        - title
+        - body
+
+    UpdateFieldNoteBody:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [pest, disease, soil, weather, irrigation, general]
+        severity:
+          type: ["string", "null"]
+          enum: [low, medium, high, critical, null]
+        title:
+          type: string
+        body:
+          type: string
+        photoData:
+          type: ["array", "null"]
+          items:
+            type: string
 
     FarmProfile:
       type: object

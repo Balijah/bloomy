@@ -355,6 +355,138 @@ export const DeleteFarmProfileParams = zod.object({
 });
 
 /**
+ * @summary List scouting notes for a farm profile
+ */
+export const GetFieldNotesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetFieldNotesResponseItem = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  date: zod.coerce.date(),
+  category: zod.enum([
+    "pest",
+    "disease",
+    "soil",
+    "weather",
+    "irrigation",
+    "general",
+  ]),
+  severity: zod
+    .union([
+      zod.literal("low"),
+      zod.literal("medium"),
+      zod.literal("high"),
+      zod.literal("critical"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  title: zod.string(),
+  body: zod.string(),
+  photoData: zod.array(zod.string()).nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetFieldNotesResponse = zod.array(GetFieldNotesResponseItem);
+
+/**
+ * @summary Create a scouting note for a farm profile
+ */
+export const CreateFieldNoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateFieldNoteBody = zod.object({
+  date: zod.coerce.date(),
+  category: zod.enum([
+    "pest",
+    "disease",
+    "soil",
+    "weather",
+    "irrigation",
+    "general",
+  ]),
+  severity: zod
+    .union([
+      zod.literal("low"),
+      zod.literal("medium"),
+      zod.literal("high"),
+      zod.literal("critical"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  title: zod.string(),
+  body: zod.string(),
+  photoData: zod.array(zod.string()).nullish(),
+});
+
+/**
+ * @summary Update a scouting note
+ */
+export const UpdateFieldNoteParams = zod.object({
+  id: zod.coerce.number(),
+  noteId: zod.coerce.number(),
+});
+
+export const UpdateFieldNoteBody = zod.object({
+  date: zod.coerce.date().optional(),
+  category: zod
+    .enum(["pest", "disease", "soil", "weather", "irrigation", "general"])
+    .optional(),
+  severity: zod
+    .union([
+      zod.literal("low"),
+      zod.literal("medium"),
+      zod.literal("high"),
+      zod.literal("critical"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  title: zod.string().optional(),
+  body: zod.string().optional(),
+  photoData: zod.array(zod.string()).nullish(),
+});
+
+export const UpdateFieldNoteResponse = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  date: zod.coerce.date(),
+  category: zod.enum([
+    "pest",
+    "disease",
+    "soil",
+    "weather",
+    "irrigation",
+    "general",
+  ]),
+  severity: zod
+    .union([
+      zod.literal("low"),
+      zod.literal("medium"),
+      zod.literal("high"),
+      zod.literal("critical"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  title: zod.string(),
+  body: zod.string(),
+  photoData: zod.array(zod.string()).nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a scouting note
+ */
+export const DeleteFieldNoteParams = zod.object({
+  id: zod.coerce.number(),
+  noteId: zod.coerce.number(),
+});
+
+/**
  * @summary Get crop-specific weather insights for a farm profile
  */
 export const GetAgricultureInsightsParams = zod.object({
@@ -396,43 +528,6 @@ export const GetAgricultureInsightsResponse = zod.object({
   precipitationForecast: zod
     .number()
     .describe("Expected precipitation next 7 days in inches"),
-  precipitationDaily: zod
-    .array(
-      zod.object({
-        date: zod.coerce.date(),
-        precipitation: zod.number(),
-        precipitationProbability: zod.number(),
-      })
-    )
-    .describe("Per-day precipitation for next 7 days"),
-  temperatureDaily: zod
-    .array(
-      zod.object({
-        date: zod.coerce.date(),
-        tempMax: zod.number(),
-        tempMin: zod.number(),
-        feelsLikeMax: zod.number().nullish(),
-        feelsLikeMin: zod.number().nullish(),
-      })
-    )
-    .describe("Per-day high/low temperature for next 7 days (°F)"),
-  windDaily: zod
-    .array(
-      zod.object({
-        date: zod.coerce.date(),
-        windSpeedMax: zod.number(),
-        windGustMax: zod.number(),
-      })
-    )
-    .describe("Per-day max wind speed and gust for next 7 days (mph)"),
-  uvDaily: zod
-    .array(
-      zod.object({
-        date: zod.coerce.date(),
-        uvIndexMax: zod.number(),
-      })
-    )
-    .describe("Per-day peak UV index for next 7 days"),
   soilMoisture: zod.number().nullish(),
   evapotranspiration7Day: zod.number().nullish(),
   nextFrostDate: zod.coerce.date().nullish(),

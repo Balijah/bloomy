@@ -23,11 +23,13 @@ import type {
   CheckoutSessionResponse,
   CreateCheckoutSessionBody,
   CreateFarmProfileBody,
+  CreateFieldNoteBody,
   CreateLocationBody,
   CurrentWeather,
   DailyForecast,
   DashboardSummary,
   FarmProfile,
+  FieldNote,
   GetAlertsParams,
   GetCurrentWeatherParams,
   GetDashboardSummaryParams,
@@ -40,6 +42,7 @@ import type {
   Subscription,
   UpdateAlertPreferencesBody,
   UpdateFarmProfileBody,
+  UpdateFieldNoteBody,
   UpdateLocationBody,
   UpdateUserProfileBody,
   UserProfile,
@@ -1403,6 +1406,353 @@ export const useDeleteFarmProfile = <
   TContext
 > => {
   return useMutation(getDeleteFarmProfileMutationOptions(options));
+};
+
+/**
+ * @summary List scouting notes for a farm profile
+ */
+export const getGetFieldNotesUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/field-notes`;
+};
+
+export const getFieldNotes = async (
+  id: number,
+  options?: RequestInit,
+): Promise<FieldNote[]> => {
+  return customFetch<FieldNote[]>(getGetFieldNotesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFieldNotesQueryKey = (id: number) => {
+  return [`/api/agriculture/farm-profiles/${id}/field-notes`] as const;
+};
+
+export const getGetFieldNotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFieldNotes>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFieldNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFieldNotesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFieldNotes>>> = ({
+    signal,
+  }) => getFieldNotes(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFieldNotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFieldNotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFieldNotes>>
+>;
+export type GetFieldNotesQueryError = ErrorType<void>;
+
+/**
+ * @summary List scouting notes for a farm profile
+ */
+
+export function useGetFieldNotes<
+  TData = Awaited<ReturnType<typeof getFieldNotes>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFieldNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFieldNotesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a scouting note for a farm profile
+ */
+export const getCreateFieldNoteUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/field-notes`;
+};
+
+export const createFieldNote = async (
+  id: number,
+  createFieldNoteBody: CreateFieldNoteBody,
+  options?: RequestInit,
+): Promise<FieldNote> => {
+  return customFetch<FieldNote>(getCreateFieldNoteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createFieldNoteBody),
+  });
+};
+
+export const getCreateFieldNoteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFieldNote>>,
+    TError,
+    { id: number; data: BodyType<CreateFieldNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createFieldNote>>,
+  TError,
+  { id: number; data: BodyType<CreateFieldNoteBody> },
+  TContext
+> => {
+  const mutationKey = ["createFieldNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createFieldNote>>,
+    { id: number; data: BodyType<CreateFieldNoteBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createFieldNote(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateFieldNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createFieldNote>>
+>;
+export type CreateFieldNoteMutationBody = BodyType<CreateFieldNoteBody>;
+export type CreateFieldNoteMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a scouting note for a farm profile
+ */
+export const useCreateFieldNote = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFieldNote>>,
+    TError,
+    { id: number; data: BodyType<CreateFieldNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createFieldNote>>,
+  TError,
+  { id: number; data: BodyType<CreateFieldNoteBody> },
+  TContext
+> => {
+  return useMutation(getCreateFieldNoteMutationOptions(options));
+};
+
+/**
+ * @summary Update a scouting note
+ */
+export const getUpdateFieldNoteUrl = (id: number, noteId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/field-notes/${noteId}`;
+};
+
+export const updateFieldNote = async (
+  id: number,
+  noteId: number,
+  updateFieldNoteBody: UpdateFieldNoteBody,
+  options?: RequestInit,
+): Promise<FieldNote> => {
+  return customFetch<FieldNote>(getUpdateFieldNoteUrl(id, noteId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateFieldNoteBody),
+  });
+};
+
+export const getUpdateFieldNoteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFieldNote>>,
+    TError,
+    { id: number; noteId: number; data: BodyType<UpdateFieldNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateFieldNote>>,
+  TError,
+  { id: number; noteId: number; data: BodyType<UpdateFieldNoteBody> },
+  TContext
+> => {
+  const mutationKey = ["updateFieldNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateFieldNote>>,
+    { id: number; noteId: number; data: BodyType<UpdateFieldNoteBody> }
+  > = (props) => {
+    const { id, noteId, data } = props ?? {};
+
+    return updateFieldNote(id, noteId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateFieldNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateFieldNote>>
+>;
+export type UpdateFieldNoteMutationBody = BodyType<UpdateFieldNoteBody>;
+export type UpdateFieldNoteMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a scouting note
+ */
+export const useUpdateFieldNote = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFieldNote>>,
+    TError,
+    { id: number; noteId: number; data: BodyType<UpdateFieldNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateFieldNote>>,
+  TError,
+  { id: number; noteId: number; data: BodyType<UpdateFieldNoteBody> },
+  TContext
+> => {
+  return useMutation(getUpdateFieldNoteMutationOptions(options));
+};
+
+/**
+ * @summary Delete a scouting note
+ */
+export const getDeleteFieldNoteUrl = (id: number, noteId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/field-notes/${noteId}`;
+};
+
+export const deleteFieldNote = async (
+  id: number,
+  noteId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteFieldNoteUrl(id, noteId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteFieldNoteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFieldNote>>,
+    TError,
+    { id: number; noteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteFieldNote>>,
+  TError,
+  { id: number; noteId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteFieldNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteFieldNote>>,
+    { id: number; noteId: number }
+  > = (props) => {
+    const { id, noteId } = props ?? {};
+
+    return deleteFieldNote(id, noteId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteFieldNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteFieldNote>>
+>;
+
+export type DeleteFieldNoteMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a scouting note
+ */
+export const useDeleteFieldNote = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFieldNote>>,
+    TError,
+    { id: number; noteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteFieldNote>>,
+  TError,
+  { id: number; noteId: number },
+  TContext
+> => {
+  return useMutation(getDeleteFieldNoteMutationOptions(options));
 };
 
 /**

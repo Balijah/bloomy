@@ -129,6 +129,122 @@ export interface HourlyForecast {
   isDay: boolean;
 }
 
+export type FieldNoteCategory =
+  (typeof FieldNoteCategory)[keyof typeof FieldNoteCategory];
+
+export const FieldNoteCategory = {
+  pest: "pest",
+  disease: "disease",
+  soil: "soil",
+  weather: "weather",
+  irrigation: "irrigation",
+  general: "general",
+} as const;
+
+/**
+ * @nullable
+ */
+export type FieldNoteSeverity =
+  | (typeof FieldNoteSeverity)[keyof typeof FieldNoteSeverity]
+  | null;
+
+export const FieldNoteSeverity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "critical",
+} as const;
+
+export interface FieldNote {
+  id: number;
+  farmProfileId: number;
+  userId: number;
+  date: string;
+  category: FieldNoteCategory;
+  /** @nullable */
+  severity?: FieldNoteSeverity;
+  title: string;
+  body: string;
+  /** @nullable */
+  photoData?: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateFieldNoteBodyCategory =
+  (typeof CreateFieldNoteBodyCategory)[keyof typeof CreateFieldNoteBodyCategory];
+
+export const CreateFieldNoteBodyCategory = {
+  pest: "pest",
+  disease: "disease",
+  soil: "soil",
+  weather: "weather",
+  irrigation: "irrigation",
+  general: "general",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CreateFieldNoteBodySeverity =
+  | (typeof CreateFieldNoteBodySeverity)[keyof typeof CreateFieldNoteBodySeverity]
+  | null;
+
+export const CreateFieldNoteBodySeverity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "critical",
+} as const;
+
+export interface CreateFieldNoteBody {
+  date: string;
+  category: CreateFieldNoteBodyCategory;
+  /** @nullable */
+  severity?: CreateFieldNoteBodySeverity;
+  title: string;
+  body: string;
+  /** @nullable */
+  photoData?: string[] | null;
+}
+
+export type UpdateFieldNoteBodyCategory =
+  (typeof UpdateFieldNoteBodyCategory)[keyof typeof UpdateFieldNoteBodyCategory];
+
+export const UpdateFieldNoteBodyCategory = {
+  pest: "pest",
+  disease: "disease",
+  soil: "soil",
+  weather: "weather",
+  irrigation: "irrigation",
+  general: "general",
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateFieldNoteBodySeverity =
+  | (typeof UpdateFieldNoteBodySeverity)[keyof typeof UpdateFieldNoteBodySeverity]
+  | null;
+
+export const UpdateFieldNoteBodySeverity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "critical",
+} as const;
+
+export interface UpdateFieldNoteBody {
+  date?: string;
+  category?: UpdateFieldNoteBodyCategory;
+  /** @nullable */
+  severity?: UpdateFieldNoteBodySeverity;
+  title?: string;
+  body?: string;
+  /** @nullable */
+  photoData?: string[] | null;
+}
+
 export type FarmProfileCropType =
   (typeof FarmProfileCropType)[keyof typeof FarmProfileCropType];
 
@@ -277,31 +393,6 @@ export interface ExtremeEvent {
   description: string;
 }
 
-export interface AgricultureInsightsDailyTemp {
-  date: string;
-  tempMax: number;
-  tempMin: number;
-  feelsLikeMax?: number | null;
-  feelsLikeMin?: number | null;
-}
-
-export interface AgricultureInsightsDailyPrecip {
-  date: string;
-  precipitation: number;
-  precipitationProbability: number;
-}
-
-export interface AgricultureInsightsDailyWind {
-  date: string;
-  windSpeedMax: number;
-  windGustMax: number;
-}
-
-export interface AgricultureInsightsDailyUV {
-  date: string;
-  uvIndexMax: number;
-}
-
 export interface AgricultureInsights {
   farmProfileId: number;
   cropType: string;
@@ -309,7 +400,10 @@ export interface AgricultureInsights {
   growingDegreeDays: number;
   /** Projected GDD over next 15 days */
   growingDegreeDaysForecast: number;
-  /** Estimated GDD accumulated since planting date */
+  /**
+   * Estimated GDD accumulated since planting date
+   * @nullable
+   */
   accumulatedGDD?: number | null;
   frostRisk: RiskLevel;
   heatStressRisk: RiskLevel;
@@ -319,10 +413,6 @@ export interface AgricultureInsights {
   precipitationDeficit: number;
   /** Expected precipitation next 7 days in inches */
   precipitationForecast: number;
-  precipitationDaily?: AgricultureInsightsDailyPrecip[];
-  temperatureDaily?: AgricultureInsightsDailyTemp[];
-  windDaily?: AgricultureInsightsDailyWind[];
-  uvDaily?: AgricultureInsightsDailyUV[];
   /** @nullable */
   soilMoisture?: number | null;
   /** @nullable */

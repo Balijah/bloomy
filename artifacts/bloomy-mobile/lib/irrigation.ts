@@ -14,9 +14,11 @@
  *  - Recommended depth fills the root zone back to field capacity.
  */
 
-import type {
-  AgricultureInsightsDailyPrecip,
-} from "@workspace/api-client-react";
+/** Per-day precipitation entry used by the water balance simulation. */
+export interface DailyPrecipEntry {
+  date: string;
+  precipitation: number;
+}
 
 // ── Crop parameters ───────────────────────────────────────────────────────────
 
@@ -157,7 +159,7 @@ export interface IrrigationInput {
   soilMoisture?: number | null;
   evapotranspiration7Day?: number | null;
   precipitationDeficit?: number;
-  precipitationDaily?: AgricultureInsightsDailyPrecip[];
+  precipitationDaily?: DailyPrecipEntry[];
   droughtRiskLevel?: string;
   cropType: string;
 }

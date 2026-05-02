@@ -15,6 +15,7 @@ import {
   computeIrrigation,
   type IrrigationDayBalance,
   type IrrigationResult,
+  type DailyPrecipEntry,
 } from "@/lib/irrigation";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -415,11 +416,29 @@ function friendlyDate(iso: string): string {
 export default function IrrigationCard({ insights, cropType }: Props) {
   const colors = useColors();
 
+  // Distribute the 7-day precipitation forecast evenly across days
+  const today = new Date();
+  const dailyRainIn = (insights.precipitationForecast ?? 0) / 7;
+  const precipitationDaily: DailyPrecipEntry[] = Array.from(
+    { length: 7 },
+    (_, i) => {
+      const d = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + i
+      );
+      return {
+        date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        precipitation: dailyRainIn,
+      };
+    }
+  );
+
   const result = computeIrrigation({
     soilMoisture: insights.soilMoisture,
     evapotranspiration7Day: insights.evapotranspiration7Day,
     precipitationDeficit: insights.precipitationDeficit,
-    precipitationDaily: insights.precipitationDaily,
+    precipitationDaily,
     droughtRiskLevel: insights.droughtRisk?.level,
     cropType,
   });
