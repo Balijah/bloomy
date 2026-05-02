@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import FarmMap from "@/components/FarmMap";
+import CropCalendar from "@/components/CropCalendar";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "#F23030",
@@ -343,6 +344,17 @@ export default function AgricultureDetailScreen() {
         <Text style={s.gddLabel}>
           Growing Degree Days (15-day forecast)
         </Text>
+      </View>
+
+      {/* Crop Calendar */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Crop Calendar</Text>
+        <CropCalendar
+          farmId={farmId}
+          plantingDate={profile.plantingDate}
+          harvestDate={profile.harvestDate}
+          nextFrostDate={insights.nextFrostDate}
+        />
       </View>
 
       {/* Risk Assessment */}
