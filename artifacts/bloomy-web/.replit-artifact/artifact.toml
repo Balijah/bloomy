@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Bloomy"
+version = "1.0.0"
+id = "artifacts/bloomy-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20612
+
+[services.development]
+run = "pnpm --filter @workspace/bloomy-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bloomy-web", "run", "build" ]
+publicDir = "artifacts/bloomy-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20612"
+BASE_PATH = "/"

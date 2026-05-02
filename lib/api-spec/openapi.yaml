@@ -1,15 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Bloomy Weather Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User profile operations
+  - name: locations
+    description: User location management
+  - name: weather
+    description: Weather forecast and current conditions
+  - name: agriculture
+    description: Agriculture-specific insights and farm profiles
+  - name: alerts
+    description: Weather alerts management
+  - name: subscriptions
+    description: Subscription and billing operations
+  - name: dashboard
+    description: Dashboard summary endpoints
+
 paths:
   /healthz:
     get:
@@ -24,6 +38,528 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserProfileBody"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /locations:
+    get:
+      operationId: getLocations
+      tags: [locations]
+      summary: List user locations
+      responses:
+        "200":
+          description: List of locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createLocation
+      tags: [locations]
+      summary: Create a new location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationBody"
+      responses:
+        "201":
+          description: Created location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /locations/{id}:
+    get:
+      operationId: getLocation
+      tags: [locations]
+      summary: Get a specific location
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLocation
+      tags: [locations]
+      summary: Update a location
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLocationBody"
+      responses:
+        "200":
+          description: Updated location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteLocation
+      tags: [locations]
+      summary: Delete a location
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /weather/current:
+    get:
+      operationId: getCurrentWeather
+      tags: [weather]
+      summary: Get current weather conditions
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Current weather conditions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentWeather"
+        "400":
+          description: Bad request
+
+  /weather/forecast:
+    get:
+      operationId: getForecast
+      tags: [weather]
+      summary: Get 15-day daily weather forecast
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: 15-day forecast
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyForecast"
+        "400":
+          description: Bad request
+
+  /weather/hourly:
+    get:
+      operationId: getHourlyForecast
+      tags: [weather]
+      summary: Get 48-hour hourly weather forecast (paid tier)
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Hourly forecast
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HourlyForecast"
+        "400":
+          description: Bad request
+        "403":
+          description: Paid tier required
+
+  /agriculture/farm-profiles:
+    get:
+      operationId: getFarmProfiles
+      tags: [agriculture]
+      summary: List user farm profiles
+      responses:
+        "200":
+          description: List of farm profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FarmProfile"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createFarmProfile
+      tags: [agriculture]
+      summary: Create a farm profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFarmProfileBody"
+      responses:
+        "201":
+          description: Created farm profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmProfile"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /agriculture/farm-profiles/{id}:
+    get:
+      operationId: getFarmProfile
+      tags: [agriculture]
+      summary: Get a specific farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Farm profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmProfile"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateFarmProfile
+      tags: [agriculture]
+      summary: Update a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFarmProfileBody"
+      responses:
+        "200":
+          description: Updated farm profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmProfile"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteFarmProfile
+      tags: [agriculture]
+      summary: Delete a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /agriculture/insights/{farmProfileId}:
+    get:
+      operationId: getAgricultureInsights
+      tags: [agriculture]
+      summary: Get crop-specific weather insights for a farm profile
+      parameters:
+        - name: farmProfileId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Agriculture insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgricultureInsights"
+        "404":
+          description: Not found
+
+  /alerts:
+    get:
+      operationId: getAlerts
+      tags: [alerts]
+      summary: List alerts for current user
+      parameters:
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+        "401":
+          description: Unauthorized
+
+  /alerts/active:
+    get:
+      operationId: getActiveAlerts
+      tags: [alerts]
+      summary: Get active unread alerts (for dashboard badge)
+      responses:
+        "200":
+          description: Active alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+        "401":
+          description: Unauthorized
+
+  /alerts/{id}/read:
+    patch:
+      operationId: markAlertRead
+      tags: [alerts]
+      summary: Mark an alert as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+        "404":
+          description: Not found
+
+  /alerts/{id}:
+    delete:
+      operationId: deleteAlert
+      tags: [alerts]
+      summary: Delete an alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /alert-preferences:
+    get:
+      operationId: getAlertPreferences
+      tags: [alerts]
+      summary: Get user alert preferences
+      responses:
+        "200":
+          description: Alert preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertPreferences"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: updateAlertPreferences
+      tags: [alerts]
+      summary: Update user alert preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAlertPreferencesBody"
+      responses:
+        "200":
+          description: Updated alert preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertPreferences"
+        "401":
+          description: Unauthorized
+
+  /subscriptions/current:
+    get:
+      operationId: getCurrentSubscription
+      tags: [subscriptions]
+      summary: Get current user subscription
+      responses:
+        "200":
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          description: Unauthorized
+
+  /subscriptions/checkout:
+    post:
+      operationId: createCheckoutSession
+      tags: [subscriptions]
+      summary: Create a Stripe checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutSessionBody"
+      responses:
+        "200":
+          description: Checkout session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+        "401":
+          description: Unauthorized
+
+  /subscriptions/portal:
+    post:
+      operationId: createPortalSession
+      tags: [subscriptions]
+      summary: Create a Stripe customer portal session
+      responses:
+        "200":
+          description: Portal session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalSessionResponse"
+        "401":
+          description: Unauthorized
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary (current weather + active alerts + risk overview)
+      parameters:
+        - name: locationId
+          in: query
+          required: false
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Unauthorized
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +570,622 @@ components:
       required:
         - status
 
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkUserId:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        subscriptionTier:
+          type: string
+          enum: [free, grower, grower_pro]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clerkUserId
+        - email
+        - subscriptionTier
+        - createdAt
+
+    UpdateUserProfileBody:
+      type: object
+      properties:
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - name
+        - lat
+        - lng
+        - isDefault
+        - createdAt
+
+    CreateLocationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        isDefault:
+          type: boolean
+      required:
+        - name
+        - lat
+        - lng
+
+    UpdateLocationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        isDefault:
+          type: boolean
+
+    CurrentWeather:
+      type: object
+      properties:
+        temperature:
+          type: number
+          description: Temperature in Fahrenheit
+        feelsLike:
+          type: number
+        humidity:
+          type: number
+        windSpeed:
+          type: number
+          description: Wind speed in mph
+        windGust:
+          type: number
+        cloudCover:
+          type: number
+          description: Cloud cover percentage 0-100
+        precipitation:
+          type: number
+          description: Current precipitation in inches
+        uvIndex:
+          type: number
+        visibility:
+          type: number
+        weatherCode:
+          type: integer
+          description: WMO weather condition code
+        weatherDescription:
+          type: string
+        isDay:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - temperature
+        - feelsLike
+        - humidity
+        - windSpeed
+        - cloudCover
+        - precipitation
+        - uvIndex
+        - weatherCode
+        - weatherDescription
+        - isDay
+        - updatedAt
+
+    DailyForecast:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        tempMax:
+          type: number
+        tempMin:
+          type: number
+        feelsLikeMax:
+          type: number
+        feelsLikeMin:
+          type: number
+        precipitation:
+          type: number
+          description: Total precipitation in inches
+        precipitationProbability:
+          type: integer
+          description: Precipitation probability 0-100
+        windSpeedMax:
+          type: number
+        windGustMax:
+          type: number
+        cloudCover:
+          type: number
+        uvIndexMax:
+          type: number
+        sunrise:
+          type: string
+        sunset:
+          type: string
+        weatherCode:
+          type: integer
+        weatherDescription:
+          type: string
+        soilMoisture:
+          type: ["number", "null"]
+        soilTemperature:
+          type: ["number", "null"]
+        evapotranspiration:
+          type: ["number", "null"]
+      required:
+        - date
+        - tempMax
+        - tempMin
+        - feelsLikeMax
+        - feelsLikeMin
+        - precipitation
+        - precipitationProbability
+        - windSpeedMax
+        - windGustMax
+        - cloudCover
+        - uvIndexMax
+        - sunrise
+        - sunset
+        - weatherCode
+        - weatherDescription
+
+    HourlyForecast:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        temperature:
+          type: number
+        feelsLike:
+          type: number
+        precipitation:
+          type: number
+        precipitationProbability:
+          type: integer
+        windSpeed:
+          type: number
+        windGust:
+          type: number
+        humidity:
+          type: number
+        cloudCover:
+          type: number
+        weatherCode:
+          type: integer
+        weatherDescription:
+          type: string
+        isDay:
+          type: boolean
+      required:
+        - time
+        - temperature
+        - feelsLike
+        - precipitation
+        - precipitationProbability
+        - windSpeed
+        - windGust
+        - humidity
+        - cloudCover
+        - weatherCode
+        - weatherDescription
+        - isDay
+
+    FarmProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        locationId:
+          type: integer
+        name:
+          type: string
+        cropType:
+          type: string
+          enum: [corn, soybeans, winter_wheat, cotton, almonds, grapes, apples, potatoes, rice, other]
+        acreage:
+          type: ["number", "null"]
+        soilType:
+          type: ["string", "null"]
+        plantingDate:
+          type: ["string", "null"]
+          format: date
+        harvestDate:
+          type: ["string", "null"]
+          format: date
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - locationId
+        - name
+        - cropType
+        - createdAt
+
+    CreateFarmProfileBody:
+      type: object
+      properties:
+        locationId:
+          type: integer
+        name:
+          type: string
+        cropType:
+          type: string
+          enum: [corn, soybeans, winter_wheat, cotton, almonds, grapes, apples, potatoes, rice, other]
+        acreage:
+          type: ["number", "null"]
+        soilType:
+          type: ["string", "null"]
+        plantingDate:
+          type: ["string", "null"]
+          format: date
+        harvestDate:
+          type: ["string", "null"]
+          format: date
+        notes:
+          type: ["string", "null"]
+      required:
+        - locationId
+        - name
+        - cropType
+
+    UpdateFarmProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        cropType:
+          type: string
+          enum: [corn, soybeans, winter_wheat, cotton, almonds, grapes, apples, potatoes, rice, other]
+        acreage:
+          type: ["number", "null"]
+        soilType:
+          type: ["string", "null"]
+        plantingDate:
+          type: ["string", "null"]
+          format: date
+        harvestDate:
+          type: ["string", "null"]
+          format: date
+        notes:
+          type: ["string", "null"]
+
+    AgricultureInsights:
+      type: object
+      properties:
+        farmProfileId:
+          type: integer
+        cropType:
+          type: string
+        growingDegreeDays:
+          type: number
+          description: Accumulated GDD for current season
+        growingDegreeDaysForecast:
+          type: number
+          description: Projected GDD over next 15 days
+        frostRisk:
+          $ref: "#/components/schemas/RiskLevel"
+        heatStressRisk:
+          $ref: "#/components/schemas/RiskLevel"
+        droughtRisk:
+          $ref: "#/components/schemas/RiskLevel"
+        harvestDisruptionRisk:
+          $ref: "#/components/schemas/RiskLevel"
+        precipitationDeficit:
+          type: number
+          description: 14-day precipitation deficit in inches
+        precipitationForecast:
+          type: number
+          description: Expected precipitation next 7 days in inches
+        soilMoisture:
+          type: ["number", "null"]
+        evapotranspiration7Day:
+          type: ["number", "null"]
+        nextFrostDate:
+          type: ["string", "null"]
+          format: date
+        recommendations:
+          type: array
+          items:
+            type: string
+        extremeEventsNext15Days:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtremeEvent"
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - farmProfileId
+        - cropType
+        - growingDegreeDays
+        - growingDegreeDaysForecast
+        - frostRisk
+        - heatStressRisk
+        - droughtRisk
+        - harvestDisruptionRisk
+        - precipitationDeficit
+        - precipitationForecast
+        - recommendations
+        - extremeEventsNext15Days
+        - updatedAt
+
+    RiskLevel:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [none, low, moderate, high, critical]
+        description:
+          type: string
+      required:
+        - level
+        - description
+
+    ExtremeEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [frost, hard_freeze, extreme_heat, heat_stress, heavy_precipitation, flash_flood, drought, high_wind, hail, harvest_disruption, late_season_frost, winter_storm]
+        date:
+          type: string
+          format: date
+        severity:
+          type: string
+          enum: [watch, warning, critical]
+        description:
+          type: string
+      required:
+        - type
+        - date
+        - severity
+        - description
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        locationId:
+          type: ["integer", "null"]
+        farmProfileId:
+          type: ["integer", "null"]
+        type:
+          type: string
+          enum: [frost, hard_freeze, extreme_heat, heat_stress, heavy_precipitation, flash_flood, drought, high_wind, hail, harvest_disruption, late_season_frost, winter_storm]
+        severity:
+          type: string
+          enum: [watch, warning, critical]
+        title:
+          type: string
+        message:
+          type: string
+        triggerValue:
+          type: ["number", "null"]
+        isRead:
+          type: boolean
+        triggeredAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - userId
+        - type
+        - severity
+        - title
+        - message
+        - isRead
+        - triggeredAt
+
+    AlertPreferences:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        emailEnabled:
+          type: boolean
+        alertTypes:
+          type: array
+          items:
+            type: string
+            enum: [frost, hard_freeze, extreme_heat, heat_stress, heavy_precipitation, flash_flood, drought, high_wind, hail, harvest_disruption, late_season_frost, winter_storm]
+        frostThreshold:
+          type: number
+          description: Temperature threshold in F to trigger frost alert
+        heatThreshold:
+          type: number
+          description: Temperature threshold in F to trigger heat alert
+        precipThreshold:
+          type: number
+          description: Precipitation threshold in inches to trigger alert
+        windThreshold:
+          type: number
+          description: Wind speed threshold in mph to trigger alert
+      required:
+        - id
+        - userId
+        - emailEnabled
+        - alertTypes
+        - frostThreshold
+        - heatThreshold
+        - precipThreshold
+        - windThreshold
+
+    UpdateAlertPreferencesBody:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+        alertTypes:
+          type: array
+          items:
+            type: string
+            enum: [frost, hard_freeze, extreme_heat, heat_stress, heavy_precipitation, flash_flood, drought, high_wind, hail, harvest_disruption, late_season_frost, winter_storm]
+        frostThreshold:
+          type: number
+        heatThreshold:
+          type: number
+        precipThreshold:
+          type: number
+        windThreshold:
+          type: number
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        tier:
+          type: string
+          enum: [free, grower, grower_pro]
+        status:
+          type: string
+          enum: [active, canceled, past_due, trialing]
+        stripeCustomerId:
+          type: ["string", "null"]
+        stripeSubscriptionId:
+          type: ["string", "null"]
+        currentPeriodEnd:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - tier
+        - status
+        - createdAt
+
+    CreateCheckoutSessionBody:
+      type: object
+      properties:
+        tier:
+          type: string
+          enum: [grower, grower_pro]
+        successUrl:
+          type: string
+        cancelUrl:
+          type: string
+      required:
+        - tier
+        - successUrl
+        - cancelUrl
+
+    CheckoutSessionResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    PortalSessionResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    DashboardSummary:
+      type: object
+      properties:
+        location:
+          $ref: "#/components/schemas/Location"
+        currentWeather:
+          $ref: "#/components/schemas/CurrentWeather"
+        todayForecast:
+          $ref: "#/components/schemas/DailyForecast"
+        activeAlertCount:
+          type: integer
+        activeAlerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert"
+        upcomingExtremes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtremeEvent"
+        weeklyPrecipitation:
+          type: number
+          description: Total precipitation expected in next 7 days (inches)
+        weeklyTempRange:
+          $ref: "#/components/schemas/TempRange"
+      required:
+        - currentWeather
+        - todayForecast
+        - activeAlertCount
+        - activeAlerts
+        - upcomingExtremes
+        - weeklyPrecipitation
+        - weeklyTempRange
+
+    TempRange:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+      required:
+        - min
+        - max
