@@ -8,6 +8,7 @@ import {
 } from "@expo-google-fonts/outfit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -28,13 +29,52 @@ import {
   BG_BASE_URL_KEY,
   clearBackgroundCredentials,
 } from "@/utils/backgroundAlerts";
+import { requestPermissions } from "@/utils/notifications";
 import { tokenCache } from "@/utils/tokenCache";
-import { useGetLocations } from "@workspace/api-client-react";
-import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import {
+  useGetLocations,
+  setBaseUrl,
+  setAuthTokenGetter,
+  registerPushToken,
+  unregisterPushToken,
+} from "@workspace/api-client-react";
 
 const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
   : "";
+
+const PUSH_TOKEN_STORAGE_KEY = "bloomy_push_token";
+
+async function tryRegisterExpoToken(): Promise<void> {
+  try {
+    const granted = await requestPermissions();
+    if (!granted) return;
+    const projectId =
+      (Constants.easConfig as any)?.projectId ??
+      (Constants.expoConfig as any)?.extra?.eas?.projectId;
+    const { data: token } = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : {}
+    );
+    await AsyncStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
+    await registerPushToken({
+      token,
+      platform: Platform.OS === "ios" ? "ios" : "android",
+    });
+  } catch {
+    // Push token registration is best-effort; ignore all errors silently
+  }
+}
+
+async function tryUnregisterExpoToken(): Promise<void> {
+  try {
+    const token = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+    if (!token) return;
+    await unregisterPushToken({ token });
+    await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
+  } catch {
+    // Non-critical
+  }
+}
 
 if (BASE_URL) {
   setBaseUrl(BASE_URL);
@@ -93,6 +133,28 @@ function AuthTokenBridge() {
   return null;
 }
 
+// Registers (on sign-in) and unregisters (on sign-out) the device Expo push token
+// so the server can send weekly digest notifications to this device.
+function PushTokenBridge() {
+  const { isSignedIn } = useAuth();
+  const prevSignedIn = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const was = prevSignedIn.current;
+    prevSignedIn.current = isSignedIn ?? false;
+
+    if (isSignedIn && was !== true) {
+      tryRegisterExpoToken();
+    } else if (!isSignedIn && was === true) {
+      tryUnregisterExpoToken();
+    }
+  }, [isSignedIn]);
+
+  return null;
+}
+
 // Caches the user's farm locations to AsyncStorage and keeps geofences up to date
 function LocationsCacheBridge() {
   const { data: locations } = useGetLocations();
@@ -141,6 +203,7 @@ function RootLayoutNav() {
   return (
     <>
       <AuthTokenBridge />
+      <PushTokenBridge />
       <LocationsCacheBridge />
       <NotificationResponseHandler />
       <Stack screenOptions={{ headerShown: false }}>

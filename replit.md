@@ -67,6 +67,8 @@ lib/
 - `users` — clerkUserId, email, firstName, lastName
 - `locations` — userId, name, lat, lng, city, state, isDefault
 - `farm_profiles` — userId, locationId, name, cropType, acreage, soilType, plantingDate, harvestDate, notes
+- `field_notes` — userId, farmProfileId, date, category, severity, title, note, photoUri
+- `push_tokens` — userId, token, platform (ios|android); unique on (userId, token)
 - `alerts` — userId, locationId, farmProfileId, type, severity, title, message, isRead, triggeredAt
 - `alert_preferences` — userId, emailEnabled, alertTypes[], frostThreshold, heatThreshold, precipThreshold, windThreshold
 - `subscriptions` — userId, tier, status, stripeCustomerId, stripeSubscriptionId, currentPeriodEnd
@@ -91,6 +93,8 @@ frost, hard_freeze, extreme_heat, heat_stress, heavy_precipitation, flash_flood,
 - `GET/PUT /alert-preferences`
 - `GET /subscriptions/current`, `POST /subscriptions/checkout`, `POST /subscriptions/portal`
 - `GET /dashboard/summary?locationId`
+- `POST /notifications/push-token` — register Expo push token (upsert)
+- `DELETE /notifications/push-token` — unregister push token (on sign-out)
 
 ## Environment Variables / Secrets
 
@@ -112,4 +116,18 @@ Required (set manually):
 - `pnpm run typecheck` — full typecheck
 - `pnpm run typecheck:libs` — rebuild composite libs (db, api-spec, etc.)
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate hooks/schemas from OpenAPI
-- `cd lib/db && pnpm drizzle-kit push --force` — push DB schema changes
+- `pnpm --filter @workspace/db run push` — push DB schema changes
+
+## Push Notifications
+
+Server-side weekly digest cron (`artifacts/api-server/src/lib/weeklyDigest.ts`):
+- Runs every **Sunday at 19:00 UTC** via `node-cron`
+- For each user with registered push tokens: counts farms, recent critical/high alerts (7 days), critical/high field notes (30 days)
+- Sends personalised Expo push notification (single-farm: farm-specific; multi-farm: aggregate summary)
+- Uses `expo-server-sdk` chunked sending (100/request) with stale-token logging
+
+Mobile (`app/_layout.tsx` → `PushTokenBridge`):
+- Calls `Notifications.getExpoPushTokenAsync()` on sign-in, registers with API
+- Unregisters token on sign-out (clean `push_tokens` table)
+- Token stored in AsyncStorage under `bloomy_push_token` key
+- Notification tap routes: `data.screen === "farm"` → farm detail; `"agriculture"` → farms tab

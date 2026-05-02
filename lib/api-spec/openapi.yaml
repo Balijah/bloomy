@@ -23,6 +23,8 @@ tags:
     description: Subscription and billing operations
   - name: dashboard
     description: Dashboard summary endpoints
+  - name: notifications
+    description: Push notification token management
 
 paths:
   /healthz:
@@ -672,8 +674,60 @@ paths:
         "401":
           description: Unauthorized
 
+  /notifications/push-token:
+    post:
+      operationId: registerPushToken
+      tags: [notifications]
+      summary: Register an Expo push token for this device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPushTokenBody"
+      responses:
+        "204":
+          description: Token registered
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: unregisterPushToken
+      tags: [notifications]
+      summary: Unregister push token for this device (on sign-out)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnregisterPushTokenBody"
+      responses:
+        "204":
+          description: Token removed
+        "401":
+          description: Unauthorized
+
 components:
   schemas:
+    RegisterPushTokenBody:
+      type: object
+      properties:
+        token:
+          type: string
+        platform:
+          type: string
+          enum: [ios, android]
+      required:
+        - token
+        - platform
+
+    UnregisterPushTokenBody:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+
     HealthStatus:
       type: object
       properties:

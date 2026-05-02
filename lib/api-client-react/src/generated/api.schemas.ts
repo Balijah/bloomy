@@ -5,6 +5,23 @@
  * Bloomy Weather Platform API
  * OpenAPI spec version: 0.1.0
  */
+export type RegisterPushTokenBodyPlatform =
+  (typeof RegisterPushTokenBodyPlatform)[keyof typeof RegisterPushTokenBodyPlatform];
+
+export const RegisterPushTokenBodyPlatform = {
+  ios: "ios",
+  android: "android",
+} as const;
+
+export interface RegisterPushTokenBody {
+  token: string;
+  platform: RegisterPushTokenBodyPlatform;
+}
+
+export interface UnregisterPushTokenBody {
+  token: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -917,3 +917,18 @@ export const GetDashboardSummaryResponse = zod.object({
     max: zod.number(),
   }),
 });
+
+/**
+ * @summary Register an Expo push token for this device
+ */
+export const RegisterPushTokenBody = zod.object({
+  token: zod.string(),
+  platform: zod.enum(["ios", "android"]),
+});
+
+/**
+ * @summary Unregister push token for this device (on sign-out)
+ */
+export const UnregisterPushTokenBody = zod.object({
+  token: zod.string(),
+});
