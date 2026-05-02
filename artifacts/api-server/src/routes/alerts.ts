@@ -116,6 +116,8 @@ router.put("/alert-preferences", requireAuth, async (req, res): Promise<void> =>
   if (parsed.data.heatThreshold !== undefined) updateData.heatThreshold = parsed.data.heatThreshold;
   if (parsed.data.precipThreshold !== undefined) updateData.precipThreshold = parsed.data.precipThreshold;
   if (parsed.data.windThreshold !== undefined) updateData.windThreshold = parsed.data.windThreshold;
+  if (parsed.data.weeklyDigestEnabled !== undefined) updateData.weeklyDigestEnabled = parsed.data.weeklyDigestEnabled;
+  if (parsed.data.digestMinSeverity !== undefined) updateData.digestMinSeverity = parsed.data.digestMinSeverity;
 
   const [updated] = await db.update(alertPreferencesTable)
     .set(updateData)

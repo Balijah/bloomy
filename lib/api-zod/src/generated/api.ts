@@ -701,6 +701,12 @@ export const GetAlertPreferencesResponse = zod.object({
   windThreshold: zod
     .number()
     .describe("Wind speed threshold in mph to trigger alert"),
+  weeklyDigestEnabled: zod
+    .boolean()
+    .describe("Whether to receive Sunday weekly farm digest push notification"),
+  digestMinSeverity: zod
+    .enum(["critical", "high", "all"])
+    .describe("Minimum alert\/note severity included in the weekly digest"),
 });
 
 /**
@@ -730,6 +736,8 @@ export const UpdateAlertPreferencesBody = zod.object({
   heatThreshold: zod.number().optional(),
   precipThreshold: zod.number().optional(),
   windThreshold: zod.number().optional(),
+  weeklyDigestEnabled: zod.boolean().optional(),
+  digestMinSeverity: zod.enum(["critical", "high", "all"]).optional(),
 });
 
 export const UpdateAlertPreferencesResponse = zod.object({
@@ -764,6 +772,12 @@ export const UpdateAlertPreferencesResponse = zod.object({
   windThreshold: zod
     .number()
     .describe("Wind speed threshold in mph to trigger alert"),
+  weeklyDigestEnabled: zod
+    .boolean()
+    .describe("Whether to receive Sunday weekly farm digest push notification"),
+  digestMinSeverity: zod
+    .enum(["critical", "high", "all"])
+    .describe("Minimum alert\/note severity included in the weekly digest"),
 });
 
 /**

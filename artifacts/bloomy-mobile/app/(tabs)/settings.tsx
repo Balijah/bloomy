@@ -3,6 +3,8 @@ import {
   useGetCurrentSubscription,
   useGetLocations,
   useCreateLocation,
+  useGetAlertPreferences,
+  useUpdateAlertPreferences,
 } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
@@ -185,6 +187,8 @@ export default function SettingsScreen() {
   const { data: sub } = useGetCurrentSubscription();
   const { data: locations } = useGetLocations();
   const createLocation = useCreateLocation();
+  const { data: prefs } = useGetAlertPreferences();
+  const updatePrefs = useUpdateAlertPreferences();
 
   const [addingLocation, setAddingLocation] = useState(false);
   const [locName, setLocName] = useState("");
@@ -228,6 +232,17 @@ export default function SettingsScreen() {
     if (Platform.OS !== "web") {
       await Linking.openSettings();
     }
+  }
+
+  function handleToggleDigest(val: boolean) {
+    if (notifUnavailable) return;
+    Haptics.selectionAsync();
+    updatePrefs.mutate({ data: { weeklyDigestEnabled: val } });
+  }
+
+  function handleSetSeverity(sev: "critical" | "high" | "all") {
+    Haptics.selectionAsync();
+    updatePrefs.mutate({ data: { digestMinSeverity: sev } });
   }
 
   async function handleSignOut() {
@@ -437,43 +452,105 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
 
-                {/* Weekly farm digest info */}
+                {/* Weekly farm digest toggle */}
                 <Divider />
                 <SettingRow
                   icon="calendar-outline"
                   label="Weekly Farm Digest"
+                  testID="row-digest-toggle"
                   right={
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <View
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: colors.primary,
-                        }}
-                      />
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontFamily: "Outfit_400Regular",
-                          color: colors.primary,
-                        }}
-                      >
-                        Sundays
-                      </Text>
-                    </View>
+                    <Switch
+                      value={prefs?.weeklyDigestEnabled ?? true}
+                      onValueChange={handleToggleDigest}
+                      trackColor={{
+                        false: colors.muted,
+                        true: colors.primary + "88",
+                      }}
+                      thumbColor={
+                        (prefs?.weeklyDigestEnabled ?? true)
+                          ? colors.primary
+                          : colors.mutedForeground
+                      }
+                      testID="switch-digest"
+                    />
                   }
                 />
-                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "Outfit_400Regular",
-                      color: colors.mutedForeground,
-                      lineHeight: 17,
-                    }}
-                  >
-                    Every Sunday morning you'll receive a weekly summary of weather alerts, critical risks, and conditions across all your farms. Tap it to jump straight to the farms that need attention.
+
+                {/* Severity selector — only visible when digest is on */}
+                {(prefs?.weeklyDigestEnabled ?? true) && (
+                  <>
+                    <Divider />
+                    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontFamily: "Outfit_600SemiBold",
+                          color: colors.mutedForeground,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        Include alerts of severity
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {(
+                          [
+                            { key: "critical", label: "Critical\nonly" },
+                            { key: "high", label: "High\n& above" },
+                            { key: "all", label: "All\nalerts" },
+                          ] as const
+                        ).map(({ key, label }) => {
+                          const active = (prefs?.digestMinSeverity ?? "high") === key;
+                          return (
+                            <Pressable
+                              key={key}
+                              onPress={() => handleSetSeverity(key)}
+                              testID={`severity-chip-${key}`}
+                              style={({ pressed }) => ({
+                                flex: 1,
+                                paddingVertical: 10,
+                                borderRadius: colors.radius,
+                                borderWidth: 1.5,
+                                borderColor: active ? colors.primary : colors.border,
+                                backgroundColor: active
+                                  ? colors.primary + "18"
+                                  : colors.background,
+                                alignItems: "center",
+                                opacity: pressed ? 0.75 : 1,
+                              })}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontFamily: "Outfit_600SemiBold",
+                                  color: active ? colors.primary : colors.mutedForeground,
+                                  textAlign: "center",
+                                  lineHeight: 17,
+                                }}
+                              >
+                                {label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </>
+                )}
+
+                {/* Digest info footer */}
+                <Divider />
+                <View style={s(colors).notifInfoRow}>
+                  <Ionicons
+                    name="time-outline"
+                    size={15}
+                    color={colors.mutedForeground}
+                  />
+                  <Text style={s(colors).notifInfoText}>
+                    {prefs?.weeklyDigestEnabled ?? true
+                      ? "Sent every Sunday at 7 PM UTC — farm alerts, risk summary, and critical scouting notes."
+                      : "Weekly digest is off. Re-enable above to receive Sunday summaries."}
                   </Text>
                 </View>
 

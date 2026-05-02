@@ -13,7 +13,7 @@
 
 import cron from "node-cron";
 import Expo, { type ExpoPushMessage } from "expo-server-sdk";
-import { db, farmProfilesTable, pushTokensTable, alertsTable, fieldNotesTable } from "@workspace/db";
+import { db, farmProfilesTable, pushTokensTable, alertsTable, fieldNotesTable, alertPreferencesTable } from "@workspace/db";
 import { eq, and, gte, inArray, or } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -61,9 +61,38 @@ async function sendWeeklyDigests(): Promise<void> {
     userTokenMap.set(row.userId, existing);
   }
 
-  const userIds = [...userTokenMap.keys()];
+  const allUserIds = [...userTokenMap.keys()];
 
-  // 2. Fetch farms for these users
+  // 2. Fetch alert preferences and filter to users who opted-in to the digest
+  const prefRows = await db
+    .select({
+      userId: alertPreferencesTable.userId,
+      weeklyDigestEnabled: alertPreferencesTable.weeklyDigestEnabled,
+      digestMinSeverity: alertPreferencesTable.digestMinSeverity,
+    })
+    .from(alertPreferencesTable)
+    .where(inArray(alertPreferencesTable.userId, allUserIds));
+
+  const prefsByUser = new Map<number, { weeklyDigestEnabled: boolean; digestMinSeverity: string }>();
+  for (const pref of prefRows) {
+    prefsByUser.set(pref.userId, {
+      weeklyDigestEnabled: pref.weeklyDigestEnabled,
+      digestMinSeverity: pref.digestMinSeverity,
+    });
+  }
+
+  // Keep only users who have opted in (default: enabled if no prefs row yet)
+  const userIds = allUserIds.filter((uid) => {
+    const pref = prefsByUser.get(uid);
+    return pref === undefined ? true : pref.weeklyDigestEnabled;
+  });
+
+  if (userIds.length === 0) {
+    logger.info("Weekly digest: all users have opted out — skipping");
+    return;
+  }
+
+  // 3. Fetch farms for opted-in users
   const farms = await db
     .select()
     .from(farmProfilesTable)
@@ -146,11 +175,30 @@ async function sendWeeklyDigests(): Promise<void> {
   const badTokens: string[] = [];
 
   for (const [userId, tokens] of userTokenMap.entries()) {
+    // Skip users who are not in the opted-in set (opted-out after token lookup)
+    if (!userIds.includes(userId)) continue;
+
     const userFarms = farmsByUser.get(userId) ?? [];
     if (userFarms.length === 0) continue; // no farms — skip
 
-    const userAlerts = alertsByUser.get(userId) ?? [];
-    const userNotes = notesByUser.get(userId) ?? [];
+    const userPrefs = prefsByUser.get(userId);
+    const minSeverity = userPrefs?.digestMinSeverity ?? "high";
+
+    // Filter alerts by user's digestMinSeverity preference
+    const allUserAlerts = alertsByUser.get(userId) ?? [];
+    const userAlerts = allUserAlerts.filter((a) => {
+      if (minSeverity === "critical") return a.severity === "critical";
+      if (minSeverity === "high") return a.severity === "critical" || a.severity === "warning";
+      return true; // "all"
+    });
+
+    // Filter notes by user's digestMinSeverity preference
+    const allUserNotes = notesByUser.get(userId) ?? [];
+    const userNotes = allUserNotes.filter((n) => {
+      if (minSeverity === "critical") return n.severity === "critical";
+      if (minSeverity === "high") return n.severity === "critical" || n.severity === "high";
+      return true; // "all"
+    });
 
     // Build notification text
     const farmCount = userFarms.length;

@@ -16,6 +16,8 @@ export const alertPreferencesTable = pgTable("alert_preferences", {
   heatThreshold: doublePrecision("heat_threshold").notNull().default(95),
   precipThreshold: doublePrecision("precip_threshold").notNull().default(2),
   windThreshold: doublePrecision("wind_threshold").notNull().default(35),
+  weeklyDigestEnabled: boolean("weekly_digest_enabled").notNull().default(true),
+  digestMinSeverity: text("digest_min_severity").notNull().default("high"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

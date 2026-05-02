@@ -1315,6 +1315,13 @@ components:
         windThreshold:
           type: number
           description: Wind speed threshold in mph to trigger alert
+        weeklyDigestEnabled:
+          type: boolean
+          description: Whether to receive Sunday weekly farm digest push notification
+        digestMinSeverity:
+          type: string
+          enum: [critical, high, all]
+          description: Minimum alert/note severity included in the weekly digest
       required:
         - id
         - userId
@@ -1324,6 +1331,8 @@ components:
         - heatThreshold
         - precipThreshold
         - windThreshold
+        - weeklyDigestEnabled
+        - digestMinSeverity
 
     UpdateAlertPreferencesBody:
       type: object
@@ -1343,6 +1352,11 @@ components:
           type: number
         windThreshold:
           type: number
+        weeklyDigestEnabled:
+          type: boolean
+        digestMinSeverity:
+          type: string
+          enum: [critical, high, all]
 
     Subscription:
       type: object

@@ -503,6 +503,18 @@ export const AlertPreferencesAlertTypesItem = {
   winter_storm: "winter_storm",
 } as const;
 
+/**
+ * Minimum alert/note severity included in the weekly digest
+ */
+export type AlertPreferencesDigestMinSeverity =
+  (typeof AlertPreferencesDigestMinSeverity)[keyof typeof AlertPreferencesDigestMinSeverity];
+
+export const AlertPreferencesDigestMinSeverity = {
+  critical: "critical",
+  high: "high",
+  all: "all",
+} as const;
+
 export interface AlertPreferences {
   id: number;
   userId: number;
@@ -516,6 +528,10 @@ export interface AlertPreferences {
   precipThreshold: number;
   /** Wind speed threshold in mph to trigger alert */
   windThreshold: number;
+  /** Whether to receive Sunday weekly farm digest push notification */
+  weeklyDigestEnabled: boolean;
+  /** Minimum alert/note severity included in the weekly digest */
+  digestMinSeverity: AlertPreferencesDigestMinSeverity;
 }
 
 export type UpdateAlertPreferencesBodyAlertTypesItem =
@@ -536,6 +552,15 @@ export const UpdateAlertPreferencesBodyAlertTypesItem = {
   winter_storm: "winter_storm",
 } as const;
 
+export type UpdateAlertPreferencesBodyDigestMinSeverity =
+  (typeof UpdateAlertPreferencesBodyDigestMinSeverity)[keyof typeof UpdateAlertPreferencesBodyDigestMinSeverity];
+
+export const UpdateAlertPreferencesBodyDigestMinSeverity = {
+  critical: "critical",
+  high: "high",
+  all: "all",
+} as const;
+
 export interface UpdateAlertPreferencesBody {
   emailEnabled?: boolean;
   alertTypes?: UpdateAlertPreferencesBodyAlertTypesItem[];
@@ -543,6 +568,8 @@ export interface UpdateAlertPreferencesBody {
   heatThreshold?: number;
   precipThreshold?: number;
   windThreshold?: number;
+  weeklyDigestEnabled?: boolean;
+  digestMinSeverity?: UpdateAlertPreferencesBodyDigestMinSeverity;
 }
 
 export type SubscriptionTier =
