@@ -1,9 +1,15 @@
-import { useGetFarmProfiles, useGetLocations } from "@workspace/api-client-react";
+import {
+  useGetFarmProfiles,
+  useGetLocations,
+  useDeleteFarmProfile,
+  getGetFarmProfilesQueryKey,
+} from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React from "react";
+import React, { useRef } from "react";
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
   Platform,
@@ -14,7 +20,19 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
+import ReanimatedSwipeable, {
+  SwipeableMethods,
+} from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useColors } from "@/hooks/useColors";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CROP_ICONS: Record<string, string> = {
   corn: "🌽",
@@ -29,45 +47,196 @@ const CROP_ICONS: Record<string, string> = {
   other: "🌱",
 };
 
-const RISK_COLORS: Record<string, string> = {
-  critical: "#F23030",
-  high: "#F07030",
-  moderate: "#EAAC30",
-  low: "#3D9A50",
-  none: "#6E736E",
-};
+const DELETE_WIDTH = 88;
 
-function RiskPill({ level, label }: { level?: string; label: string }) {
-  const color = RISK_COLORS[level?.toLowerCase() ?? "none"] ?? RISK_COLORS.none;
+// ─── Delete action panel (native only) ───────────────────────────────────────
+
+function DeleteAction({
+  prog,
+  drag,
+  onDelete,
+}: {
+  prog: SharedValue<number>;
+  drag: SharedValue<number>;
+  onDelete: () => void;
+}) {
+  const colors = useColors();
+
+  const animStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      drag.value,
+      [-DELETE_WIDTH, 0],
+      [0, DELETE_WIDTH],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ translateX }] };
+  });
+
+  const scaleStyle = useAnimatedStyle(() => {
+    const scale = interpolate(prog.value, [0, 1], [0.85, 1], Extrapolation.CLAMP);
+    const opacity = interpolate(prog.value, [0, 0.5, 1], [0, 0.7, 1], Extrapolation.CLAMP);
+    return { transform: [{ scale }], opacity };
+  });
+
   return (
-    <View style={[riskStyles.pill, { backgroundColor: color + "22", borderColor: color + "44" }]}>
-      <View style={[riskStyles.dot, { backgroundColor: color }]} />
-      <Text style={[riskStyles.text, { color }]}>{label}</Text>
-    </View>
+    <Animated.View style={[ds.deleteOuter, animStyle]}>
+      <Pressable
+        style={({ pressed }) => [
+          ds.deleteBtn,
+          { opacity: pressed ? 0.85 : 1 },
+        ]}
+        onPress={onDelete}
+      >
+        <Animated.View style={[ds.deleteInner, scaleStyle]}>
+          <Ionicons name="trash-outline" size={22} color="#fff" />
+          <Text style={ds.deleteLabel}>Delete</Text>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-const riskStyles = StyleSheet.create({
-  pill: {
-    flexDirection: "row",
+const ds = StyleSheet.create({
+  deleteOuter: {
+    width: DELETE_WIDTH,
+    justifyContent: "center",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: "#F23030",
+    borderRadius: 12,
+    marginLeft: 8,
   },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  text: { fontSize: 12, fontFamily: "Outfit_500Medium" },
+  deleteBtn: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteInner: {
+    alignItems: "center",
+    gap: 4,
+  },
+  deleteLabel: {
+    fontSize: 12,
+    fontFamily: "Outfit_600SemiBold",
+    color: "#fff",
+  },
 });
+
+// ─── Swipeable farm card ──────────────────────────────────────────────────────
+
+interface FarmCardProps {
+  item: {
+    id: number;
+    name: string;
+    cropType: string;
+    locationId: number;
+    acreage?: number | null;
+    plantingDate?: string | null;
+  };
+  locationName?: string;
+  onDelete: (id: number, name: string) => void;
+}
+
+function SwipeableFarmCard({ item, locationName, onDelete }: FarmCardProps) {
+  const colors = useColors();
+  const swipeRef = useRef<SwipeableMethods>(null);
+
+  function handleDelete() {
+    swipeRef.current?.close();
+    onDelete(item.id, item.name);
+  }
+
+  const cardContent = (
+    <Pressable
+      style={({ pressed }) => [s(colors).card, pressed && { opacity: 0.85 }]}
+      onPress={() => {
+        Haptics.selectionAsync();
+        router.push(`/agriculture/${item.id}`);
+      }}
+      testID={`farm-card-${item.id}`}
+    >
+      <View style={s(colors).cardHeader}>
+        <Text style={s(colors).cropEmoji}>
+          {CROP_ICONS[item.cropType] ?? "🌱"}
+        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s(colors).cardTitle}>{item.name}</Text>
+          <Text style={s(colors).cardSub}>
+            {item.cropType.replace(/_/g, " ")}
+            {locationName ? ` · ${locationName}` : ""}
+          </Text>
+        </View>
+
+        {/* On web: show a visible delete icon instead of swipe */}
+        {Platform.OS === "web" ? (
+          <Pressable
+            onPress={() => onDelete(item.id, item.name)}
+            style={({ pressed }) => [s(colors).webDeleteBtn, pressed && { opacity: 0.7 }]}
+            testID={`button-delete-farm-${item.id}`}
+          >
+            <Ionicons name="trash-outline" size={17} color="#F23030" />
+          </Pressable>
+        ) : (
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        )}
+      </View>
+
+      {(item.acreage || item.plantingDate) && (
+        <View style={s(colors).cardMeta}>
+          {item.acreage && (
+            <View style={s(colors).metaChip}>
+              <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
+              <Text style={s(colors).metaText}>{item.acreage} ac</Text>
+            </View>
+          )}
+          {item.plantingDate && (
+            <View style={s(colors).metaChip}>
+              <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
+              <Text style={s(colors).metaText}>Planted {item.plantingDate}</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </Pressable>
+  );
+
+  // Web: no swipeable wrapper needed
+  if (Platform.OS === "web") {
+    return cardContent;
+  }
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeRef}
+      friction={2}
+      enableTrackpadTwoFingerGesture
+      rightThreshold={DELETE_WIDTH * 0.55}
+      renderRightActions={(prog, drag) => (
+        <DeleteAction prog={prog} drag={drag} onDelete={handleDelete} />
+      )}
+      onSwipeableWillOpen={(direction) => {
+        if (direction === "right") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          handleDelete();
+        }
+      }}
+    >
+      {cardContent}
+    </ReanimatedSwipeable>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function AgricultureScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const queryClient = useQueryClient();
 
   const { data: profiles, isLoading, refetch, isRefetching } = useGetFarmProfiles();
   const { data: locations } = useGetLocations();
+  const deleteFarmProfile = useDeleteFarmProfile();
 
   const locationsMap = React.useMemo(() => {
     const map: Record<number, string> = {};
@@ -75,9 +244,41 @@ export default function AgricultureScreen() {
     return map;
   }, [locations]);
 
+  function handleDelete(id: number, name: string) {
+    Alert.alert(
+      "Delete farm profile?",
+      `"${name}" will be permanently removed. This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteFarmProfile.mutateAsync({ id });
+              await queryClient.invalidateQueries({
+                queryKey: getGetFarmProfilesQueryKey(),
+              });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert("Error", "Could not delete this farm profile. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -91,14 +292,13 @@ export default function AgricultureScreen() {
           <Text style={s(colors).headerTitle}>My Fields</Text>
           <Text style={s(colors).headerSub}>
             {profiles?.length ?? 0} farm profile{profiles?.length !== 1 ? "s" : ""}
+            {Platform.OS !== "web" && (profiles?.length ?? 0) > 0
+              ? "  ·  swipe left to delete"
+              : ""}
           </Text>
         </View>
-        {/* Add button */}
         <Pressable
-          style={({ pressed }) => [
-            s(colors).addBtn,
-            pressed && { opacity: 0.8 },
-          ]}
+          style={({ pressed }) => [s(colors).addBtn, pressed && { opacity: 0.8 }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push("/agriculture/new");
@@ -115,23 +315,28 @@ export default function AgricultureScreen() {
         scrollEnabled={!!(profiles && profiles.length > 0)}
         contentContainerStyle={[
           s(colors).listContent,
-          { paddingBottom: Platform.OS === "web" ? 84 + 16 : insets.bottom + 80 },
+          {
+            paddingBottom:
+              Platform.OS === "web" ? 84 + 16 : insets.bottom + 80,
+          },
         ]}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={s(colors).empty}>
             <Ionicons name="leaf-outline" size={56} color={colors.mutedForeground} />
             <Text style={s(colors).emptyTitle}>No farm profiles yet</Text>
             <Text style={s(colors).emptyText}>
-              Add your fields to get crop-specific weather insights and growing degree day tracking.
+              Add your fields to get crop-specific weather insights and growing degree day
+              tracking.
             </Text>
             <Pressable
-              style={({ pressed }) => [
-                s(colors).emptyBtn,
-                pressed && { opacity: 0.8 },
-              ]}
+              style={({ pressed }) => [s(colors).emptyBtn, pressed && { opacity: 0.8 }]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push("/agriculture/new");
@@ -143,50 +348,18 @@ export default function AgricultureScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [s(colors).card, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.push(`/agriculture/${item.id}`);
-            }}
-            testID={`farm-card-${item.id}`}
-          >
-            <View style={s(colors).cardHeader}>
-              <Text style={s(colors).cropEmoji}>
-                {CROP_ICONS[item.cropType] ?? "🌱"}
-              </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={s(colors).cardTitle}>{item.name}</Text>
-                <Text style={s(colors).cardSub}>
-                  {item.cropType.replace(/_/g, " ")}
-                  {locationsMap[item.locationId] ? ` · ${locationsMap[item.locationId]}` : ""}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-            </View>
-
-            {(item.acreage || item.plantingDate) && (
-              <View style={s(colors).cardMeta}>
-                {item.acreage && (
-                  <View style={s(colors).metaChip}>
-                    <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
-                    <Text style={s(colors).metaText}>{item.acreage} ac</Text>
-                  </View>
-                )}
-                {item.plantingDate && (
-                  <View style={s(colors).metaChip}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
-                    <Text style={s(colors).metaText}>Planted {item.plantingDate}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </Pressable>
+          <SwipeableFarmCard
+            item={item}
+            locationName={locationsMap[item.locationId]}
+            onDelete={handleDelete}
+          />
         )}
       />
     </View>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const s = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
@@ -205,7 +378,7 @@ const s = (colors: ReturnType<typeof useColors>) =>
       color: colors.foreground,
     },
     headerSub: {
-      fontSize: 14,
+      fontSize: 13,
       fontFamily: "Outfit_400Regular",
       color: colors.mutedForeground,
       marginTop: 2,
@@ -263,6 +436,10 @@ const s = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       fontFamily: "Outfit_400Regular",
       color: colors.mutedForeground,
+    },
+    webDeleteBtn: {
+      padding: 6,
+      marginLeft: 4,
     },
     empty: {
       alignItems: "center",
