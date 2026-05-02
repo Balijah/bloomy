@@ -3,6 +3,8 @@ import {
   useGetLocations,
   useDeleteFarmProfile,
   getGetFarmProfilesQueryKey,
+  getGetAgricultureInsightsQueryKey,
+  type AgricultureInsights,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -31,6 +33,7 @@ import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useColors } from "@/hooks/useColors";
+import { computeSoilHealth, type SoilHealthResult } from "@/lib/soilHealth";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -134,10 +137,11 @@ interface FarmCardProps {
     plantingDate?: string | null;
   };
   locationName?: string;
+  soilScore?: SoilHealthResult | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -181,7 +185,7 @@ function SwipeableFarmCard({ item, locationName, onDelete }: FarmCardProps) {
         )}
       </View>
 
-      {(item.acreage || item.plantingDate) && (
+      {(item.acreage || item.plantingDate || soilScore) && (
         <View style={s(colors).cardMeta}>
           {item.acreage && (
             <View style={s(colors).metaChip}>
@@ -193,6 +197,32 @@ function SwipeableFarmCard({ item, locationName, onDelete }: FarmCardProps) {
             <View style={s(colors).metaChip}>
               <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
               <Text style={s(colors).metaText}>Planted {item.plantingDate}</Text>
+            </View>
+          )}
+          {soilScore && (
+            <View
+              style={[
+                s(colors).metaChip,
+                {
+                  backgroundColor: soilScore.color + "18",
+                  borderWidth: 1,
+                  borderColor: soilScore.color + "40",
+                },
+              ]}
+            >
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  backgroundColor: soilScore.color,
+                }}
+              />
+              <Text
+                style={[s(colors).metaText, { color: soilScore.color, fontFamily: "Outfit_600SemiBold" }]}
+              >
+                Soil {soilScore.label}
+              </Text>
             </View>
           )}
         </View>
@@ -243,6 +273,28 @@ export default function AgricultureScreen() {
     locations?.forEach((l) => (map[l.id] = l.name));
     return map;
   }, [locations]);
+
+  // Read cached agriculture insights (populated when user visits farm detail screens)
+  // and compute the soil health score client-side — zero extra API calls.
+  const soilScores = React.useMemo(() => {
+    const map: Record<number, SoilHealthResult | null> = {};
+    profiles?.forEach((p) => {
+      const key = getGetAgricultureInsightsQueryKey(p.id);
+      const cached = queryClient.getQueryData<AgricultureInsights>(key);
+      if (cached) {
+        map[p.id] = computeSoilHealth({
+          soilMoisture: cached.soilMoisture,
+          evapotranspiration7Day: cached.evapotranspiration7Day,
+          precipitationDeficit: cached.precipitationDeficit ?? 0,
+          precipitationForecast: cached.precipitationForecast ?? 0,
+          droughtRiskLevel: cached.droughtRisk?.level ?? "none",
+        });
+      } else {
+        map[p.id] = null;
+      }
+    });
+    return map;
+  }, [profiles, queryClient]);
 
   function handleDelete(id: number, name: string) {
     Alert.alert(
@@ -351,6 +403,7 @@ export default function AgricultureScreen() {
           <SwipeableFarmCard
             item={item}
             locationName={locationsMap[item.locationId]}
+            soilScore={soilScores[item.id]}
             onDelete={handleDelete}
           />
         )}

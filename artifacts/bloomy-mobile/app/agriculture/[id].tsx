@@ -35,6 +35,7 @@ import WindChart from "@/components/WindChart";
 import UVChart from "@/components/UVChart";
 import CropStageTracker from "@/components/CropStageTracker";
 import YieldForecastCard from "@/components/YieldForecastCard";
+import SoilHealthCard from "@/components/SoilHealthCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -437,6 +438,12 @@ export default function AgricultureDetailScreen() {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Yield Forecast</Text>
         <YieldForecastCard insights={insights} />
+      </View>
+
+      {/* Soil Health */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Soil Health</Text>
+        <SoilHealthCard insights={insights} />
       </View>
 
       {/* Crop Calendar */}
