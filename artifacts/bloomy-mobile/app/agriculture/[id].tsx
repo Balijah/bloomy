@@ -1,12 +1,15 @@
 import {
   useGetFarmProfile,
   useGetAgricultureInsights,
+  useGetFarmProfiles,
+  useGetLocations,
+  useGetAlerts,
   getGetFarmProfileQueryKey,
   getGetAgricultureInsightsQueryKey,
 } from "@workspace/api-client-react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -18,6 +21,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import FarmMap from "@/components/FarmMap";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "#F23030",
@@ -41,15 +45,25 @@ function RiskCard({
   const colors = useColors();
   const color = RISK_COLORS[level?.toLowerCase() ?? "none"] ?? RISK_COLORS.none;
   return (
-    <View style={[rc(colors).card, { borderLeftColor: color }]} testID={`risk-card-${title}`}>
+    <View
+      style={[rc(colors).card, { borderLeftColor: color }]}
+      testID={`risk-card-${title}`}
+    >
       <View style={rc(colors).top}>
         <View style={[rc(colors).icon, { backgroundColor: color + "22" }]}>
           <Ionicons name={icon as any} size={18} color={color} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={rc(colors).label}>{title}</Text>
-          <View style={[rc(colors).levelBadge, { backgroundColor: color + "22" }]}>
-            <Text style={[rc(colors).levelText, { color }]}>{level ?? "Unknown"}</Text>
+          <View
+            style={[
+              rc(colors).levelBadge,
+              { backgroundColor: color + "22" },
+            ]}
+          >
+            <Text style={[rc(colors).levelText, { color }]}>
+              {level ?? "Unknown"}
+            </Text>
           </View>
         </View>
       </View>
@@ -68,7 +82,12 @@ const rc = (colors: ReturnType<typeof useColors>) =>
       borderLeftWidth: 4,
       padding: 14,
     },
-    top: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 6 },
+    top: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 6,
+    },
     icon: {
       width: 36,
       height: 36,
@@ -76,7 +95,11 @@ const rc = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    label: { fontSize: 14, fontFamily: "Outfit_500Medium", color: colors.foreground },
+    label: {
+      fontSize: 14,
+      fontFamily: "Outfit_500Medium",
+      color: colors.foreground,
+    },
     levelBadge: {
       alignSelf: "flex-start",
       paddingHorizontal: 8,
@@ -84,8 +107,17 @@ const rc = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 10,
       marginTop: 4,
     },
-    levelText: { fontSize: 12, fontFamily: "Outfit_600SemiBold", textTransform: "capitalize" },
-    desc: { fontSize: 13, fontFamily: "Outfit_400Regular", color: colors.mutedForeground, lineHeight: 19 },
+    levelText: {
+      fontSize: 12,
+      fontFamily: "Outfit_600SemiBold",
+      textTransform: "capitalize",
+    },
+    desc: {
+      fontSize: 13,
+      fontFamily: "Outfit_400Regular",
+      color: colors.mutedForeground,
+      lineHeight: 19,
+    },
   });
 
 export default function AgricultureDetailScreen() {
@@ -95,21 +127,73 @@ export default function AgricultureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const farmId = id ? parseInt(id) : 0;
 
-  const { data: profile, isLoading: profileLoading } = useGetFarmProfile(farmId, {
-    query: { enabled: !!farmId, queryKey: getGetFarmProfileQueryKey(farmId) },
-  });
-
-  const { data: insights, isLoading: insightsLoading } = useGetAgricultureInsights(farmId, {
-    query: { enabled: !!farmId, queryKey: getGetAgricultureInsightsQueryKey(farmId) },
-  });
+  const { data: profile, isLoading: profileLoading } = useGetFarmProfile(
+    farmId,
+    { query: { enabled: !!farmId, queryKey: getGetFarmProfileQueryKey(farmId) } }
+  );
+  const { data: insights, isLoading: insightsLoading } =
+    useGetAgricultureInsights(farmId, {
+      query: {
+        enabled: !!farmId,
+        queryKey: getGetAgricultureInsightsQueryKey(farmId),
+      },
+    });
+  const { data: allLocations } = useGetLocations();
+  const { data: allFarms } = useGetFarmProfiles();
+  const { data: alerts } = useGetAlerts({});
 
   const isLoading = profileLoading || insightsLoading;
+
+  // Prepare map data
+  const mapLocations = useMemo(
+    () =>
+      (allLocations ?? []).map((l) => ({
+        id: l.id,
+        name: l.name,
+        lat: l.lat,
+        lng: l.lng,
+      })),
+    [allLocations]
+  );
+
+  const mapFarms = useMemo(
+    () =>
+      (allFarms ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        cropType: f.cropType,
+        locationId: f.locationId,
+      })),
+    [allFarms]
+  );
+
+  const mapAlerts = useMemo(
+    () =>
+      (alerts ?? []).map((a) => ({
+        isRead: a.isRead,
+        severity: a.severity,
+      })),
+    [alerts]
+  );
+
+  // Resolve coordinates for the current farm
+  const currentLocation = useMemo(
+    () => allLocations?.find((l) => l.id === profile?.locationId),
+    [allLocations, profile]
+  );
 
   const s = styles(colors, insets);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -117,44 +201,107 @@ export default function AgricultureDetailScreen() {
 
   if (!profile || !insights) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background, padding: 32 }}>
-        <Ionicons name="warning-outline" size={48} color={colors.mutedForeground} />
-        <Text style={{ fontSize: 18, fontFamily: "Outfit_600SemiBold", color: colors.foreground, marginTop: 16 }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background,
+          padding: 32,
+        }}
+      >
+        <Ionicons
+          name="warning-outline"
+          size={48}
+          color={colors.mutedForeground}
+        />
+        <Text
+          style={{
+            fontSize: 18,
+            fontFamily: "Outfit_600SemiBold",
+            color: colors.foreground,
+            marginTop: 16,
+          }}
+        >
           Profile not found
         </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }} testID="button-back">
-          <Text style={{ fontSize: 15, fontFamily: "Outfit_500Medium", color: colors.primary }}>Go back</Text>
+        <Pressable
+          onPress={() => router.back()}
+          style={{ marginTop: 16 }}
+          testID="button-back"
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              fontFamily: "Outfit_500Medium",
+              color: colors.primary,
+            }}
+          >
+            Go back
+          </Text>
         </Pressable>
       </View>
     );
   }
 
   const moisturePct = Math.min(100, Math.max(0, insights.soilMoisture ?? 0));
+  const showMap =
+    currentLocation != null && mapLocations.length > 0;
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        paddingBottom: Platform.OS === "web" ? 34 + 16 : insets.bottom + 24,
+        paddingBottom:
+          Platform.OS === "web" ? 34 + 16 : insets.bottom + 24,
       }}
     >
       {/* Header */}
       <View style={[s.header, { paddingTop: topPad + 16 }]}>
-        <Pressable onPress={() => router.back()} style={s.backBtn} testID="button-back">
+        <Pressable
+          onPress={() => router.back()}
+          style={s.backBtn}
+          testID="button-back"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>{profile.name}</Text>
-          <Text style={s.subtitle}>{profile.cropType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</Text>
+          <Text style={s.subtitle}>
+            {profile.cropType
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase())}
+          </Text>
         </View>
       </View>
 
+      {/* Map — shows all farm locations with alert overlay */}
+      {showMap && (
+        <View style={s.mapWrapper}>
+          <Text style={s.sectionLabel}>Farm Locations</Text>
+          <FarmMap
+            currentLocationId={currentLocation.id}
+            locations={mapLocations}
+            farms={mapFarms}
+            alerts={mapAlerts}
+          />
+        </View>
+      )}
+
       {/* GDD Hero */}
       <View style={s.gddCard}>
-        <MaterialCommunityIcons name="sprout-outline" size={32} color={colors.primary} />
-        <Text style={s.gddValue}>{insights.growingDegreeDaysForecast ?? "—"}</Text>
-        <Text style={s.gddLabel}>Growing Degree Days (15-day forecast)</Text>
+        <MaterialCommunityIcons
+          name="sprout-outline"
+          size={32}
+          color={colors.primary}
+        />
+        <Text style={s.gddValue}>
+          {insights.growingDegreeDaysForecast ?? "—"}
+        </Text>
+        <Text style={s.gddLabel}>
+          Growing Degree Days (15-day forecast)
+        </Text>
       </View>
 
       {/* Risk Assessment */}
@@ -197,29 +344,39 @@ export default function AgricultureDetailScreen() {
           <View style={s.moistureRow}>
             <Text style={s.moistureLabel}>Soil Moisture</Text>
             <Text style={s.moistureValue} testID="text-soil-moisture">
-              {insights.soilMoisture != null ? `${insights.soilMoisture.toFixed(1)}%` : "N/A"}
+              {insights.soilMoisture != null
+                ? `${insights.soilMoisture.toFixed(1)}%`
+                : "N/A"}
             </Text>
           </View>
           <View style={s.progressBg}>
-            <View style={[s.progressFill, { width: `${moisturePct}%` as any }]} />
+            <View
+              style={[s.progressFill, { width: `${moisturePct}%` as any }]}
+            />
           </View>
 
           {insights.evapotranspiration7Day != null && (
             <View style={[s.moistureRow, { marginTop: 16 }]}>
               <Text style={s.moistureLabel}>7-Day Evapotranspiration</Text>
-              <Text style={s.moistureValue} testID="text-et">{insights.evapotranspiration7Day.toFixed(2)} in</Text>
+              <Text style={s.moistureValue} testID="text-et">
+                {insights.evapotranspiration7Day.toFixed(2)} in
+              </Text>
             </View>
           )}
           {insights.precipitationForecast != null && (
             <View style={[s.moistureRow, { marginTop: 12 }]}>
               <Text style={s.moistureLabel}>7-Day Precip Forecast</Text>
-              <Text style={s.moistureValue} testID="text-precip">{insights.precipitationForecast.toFixed(2)} in</Text>
+              <Text style={s.moistureValue} testID="text-precip">
+                {insights.precipitationForecast.toFixed(2)} in
+              </Text>
             </View>
           )}
           {insights.nextFrostDate && (
-            <View style={[s.frostAlert]}>
+            <View style={s.frostAlert}>
               <Ionicons name="snow-outline" size={16} color="#5B9BDE" />
-              <Text style={s.frostText}>Next frost: {insights.nextFrostDate}</Text>
+              <Text style={s.frostText}>
+                Next frost: {insights.nextFrostDate}
+              </Text>
             </View>
           )}
         </View>
@@ -233,7 +390,11 @@ export default function AgricultureDetailScreen() {
             {insights.recommendations.map((rec, i) => (
               <View key={i} style={s.recCard} testID={`rec-${i}`}>
                 <View style={s.recIcon}>
-                  <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={18}
+                    color={colors.primary}
+                  />
                 </View>
                 <Text style={s.recText}>{rec}</Text>
               </View>
@@ -245,7 +406,10 @@ export default function AgricultureDetailScreen() {
   );
 }
 
-const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof useSafeAreaInsets>) =>
+const styles = (
+  colors: ReturnType<typeof useColors>,
+  insets: ReturnType<typeof useSafeAreaInsets>
+) =>
   StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -265,13 +429,29 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       backgroundColor: colors.muted,
       marginTop: 2,
     },
-    title: { fontSize: 24, fontFamily: "Outfit_700Bold", color: colors.foreground },
+    title: {
+      fontSize: 24,
+      fontFamily: "Outfit_700Bold",
+      color: colors.foreground,
+    },
     subtitle: {
       fontSize: 14,
       fontFamily: "Outfit_400Regular",
       color: colors.mutedForeground,
       marginTop: 3,
       textTransform: "capitalize",
+    },
+    mapWrapper: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      gap: 8,
+    },
+    sectionLabel: {
+      fontSize: 12,
+      fontFamily: "Outfit_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 1,
     },
     gddCard: {
       margin: 16,
@@ -283,8 +463,17 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       alignItems: "center",
       gap: 8,
     },
-    gddValue: { fontSize: 56, fontFamily: "Outfit_700Bold", color: colors.primary },
-    gddLabel: { fontSize: 13, fontFamily: "Outfit_400Regular", color: colors.mutedForeground, textAlign: "center" },
+    gddValue: {
+      fontSize: 56,
+      fontFamily: "Outfit_700Bold",
+      color: colors.primary,
+    },
+    gddLabel: {
+      fontSize: 13,
+      fontFamily: "Outfit_400Regular",
+      color: colors.mutedForeground,
+      textAlign: "center",
+    },
     section: { paddingHorizontal: 16, paddingBottom: 8, gap: 12 },
     sectionTitle: {
       fontSize: 12,
@@ -300,9 +489,21 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       borderColor: colors.border,
       padding: 16,
     },
-    moistureRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    moistureLabel: { fontSize: 14, fontFamily: "Outfit_400Regular", color: colors.mutedForeground },
-    moistureValue: { fontSize: 15, fontFamily: "Outfit_600SemiBold", color: colors.foreground },
+    moistureRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    moistureLabel: {
+      fontSize: 14,
+      fontFamily: "Outfit_400Regular",
+      color: colors.mutedForeground,
+    },
+    moistureValue: {
+      fontSize: 15,
+      fontFamily: "Outfit_600SemiBold",
+      color: colors.foreground,
+    },
     progressBg: {
       height: 8,
       backgroundColor: colors.muted,
@@ -310,7 +511,11 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       marginTop: 10,
       overflow: "hidden",
     },
-    progressFill: { height: "100%", backgroundColor: "#5B9BDE", borderRadius: 4 },
+    progressFill: {
+      height: "100%",
+      backgroundColor: "#5B9BDE",
+      borderRadius: 4,
+    },
     frostAlert: {
       flexDirection: "row",
       alignItems: "center",
@@ -320,7 +525,11 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       padding: 10,
       marginTop: 14,
     },
-    frostText: { fontSize: 13, fontFamily: "Outfit_500Medium", color: "#5B9BDE" },
+    frostText: {
+      fontSize: 13,
+      fontFamily: "Outfit_500Medium",
+      color: "#5B9BDE",
+    },
     recCard: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -332,5 +541,11 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       padding: 14,
     },
     recIcon: { marginTop: 1 },
-    recText: { flex: 1, fontSize: 14, fontFamily: "Outfit_400Regular", color: colors.foreground, lineHeight: 21 },
+    recText: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: "Outfit_400Regular",
+      color: colors.foreground,
+      lineHeight: 21,
+    },
   });
