@@ -40,6 +40,7 @@ import FrostCountdownCard from "@/components/FrostCountdownCard";
 import SprayWindowCard from "@/components/SprayWindowCard";
 import IrrigationCard from "@/components/IrrigationCard";
 import ScoutingLogCard from "@/components/ScoutingLogCard";
+import DiseaseRiskCard from "@/components/DiseaseRiskCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -466,6 +467,17 @@ export default function AgricultureDetailScreen() {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Irrigation</Text>
         <IrrigationCard insights={insights} cropType={profile.cropType} />
+      </View>
+
+      {/* Disease Risk Map */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Disease Risk</Text>
+        <DiseaseRiskCard
+          insights={insights}
+          currentLocationId={showMap ? currentLocation.id : undefined}
+          locations={showMap ? mapLocations : []}
+          farms={showMap ? mapFarms : []}
+        />
       </View>
 
       {/* Scouting Log */}

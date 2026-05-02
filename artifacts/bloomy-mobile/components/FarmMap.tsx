@@ -32,6 +32,7 @@ interface FarmMapProps {
   locations: FarmLocation[];
   farms: FarmProfile[];
   alerts: AlertSummary[];
+  circleColorOverride?: string;
 }
 
 const SEVERITY_ORDER = ["extreme", "severe", "moderate", "minor"];
@@ -71,11 +72,15 @@ export default function FarmMap({
   locations,
   farms,
   alerts,
+  circleColorOverride,
 }: FarmMapProps) {
   const colors = useColors();
   const mapRef = useRef<MapView>(null);
 
-  const overlayColor = useMemo(() => getTopAlertColor(alerts), [alerts]);
+  const overlayColor = useMemo(
+    () => circleColorOverride ?? getTopAlertColor(alerts),
+    [circleColorOverride, alerts]
+  );
   const unreadCount = alerts.filter((a) => !a.isRead).length;
 
   const currentLocation = useMemo(
