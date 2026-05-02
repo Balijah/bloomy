@@ -437,6 +437,46 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
 
+                {/* Weekly farm digest info */}
+                <Divider />
+                <SettingRow
+                  icon="calendar-outline"
+                  label="Weekly Farm Digest"
+                  right={
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: colors.primary,
+                        }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontFamily: "Outfit_400Regular",
+                          color: colors.primary,
+                        }}
+                      >
+                        Sundays
+                      </Text>
+                    </View>
+                  }
+                />
+                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Outfit_400Regular",
+                      color: colors.mutedForeground,
+                      lineHeight: 17,
+                    }}
+                  >
+                    Every Sunday morning you'll receive a weekly summary of weather alerts, critical risks, and conditions across all your farms. Tap it to jump straight to the farms that need attention.
+                  </Text>
+                </View>
+
                 {/* Farm risk alerts info */}
                 <Divider />
                 <SettingRow

@@ -125,6 +125,8 @@ function NotificationResponseHandler() {
         >;
         if (data?.screen === "farm" && data?.farmProfileId) {
           router.push(`/agriculture/${data.farmProfileId}` as any);
+        } else if (data?.screen === "agriculture") {
+          router.push("/(tabs)/agriculture");
         } else if (data?.screen === "alerts" || data?.alertId) {
           router.push("/(tabs)/alerts");
         }

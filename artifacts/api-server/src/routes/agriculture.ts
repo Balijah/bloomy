@@ -133,6 +133,45 @@ router.delete("/agriculture/farm-profiles/:id", requireAuth, async (req, res): P
   res.sendStatus(204);
 });
 
+router.get("/agriculture/weekly-digest", requireAuth, async (req, res): Promise<void> => {
+  const userId = await getUserId(req);
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [farms, weekAlerts] = await Promise.all([
+    db.select().from(farmProfilesTable).where(eq(farmProfilesTable.userId, userId)),
+    db.select().from(alertsTable).where(
+      and(
+        eq(alertsTable.userId, userId),
+        gte(alertsTable.triggeredAt, weekAgo)
+      )
+    ),
+  ]);
+
+  const farmDigests = farms.map((farm) => {
+    const farmAlerts = weekAlerts.filter((a) => a.farmProfileId === farm.id);
+    const criticalRiskTypes = [
+      ...new Set(
+        farmAlerts
+          .filter((a) => a.severity === "critical" || a.severity === "warning")
+          .map((a) => a.type)
+      ),
+    ];
+    return {
+      id: farm.id,
+      name: farm.name,
+      cropType: farm.cropType,
+      weeklyAlertCount: farmAlerts.length,
+      criticalRiskTypes,
+    };
+  });
+
+  res.json({
+    farms: farmDigests,
+    totalAlerts: weekAlerts.length,
+    generatedAt: new Date().toISOString(),
+  });
+});
+
 router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res): Promise<void> => {
   const userId = await getUserId(req);
   const params = GetAgricultureInsightsParams.safeParse(req.params);

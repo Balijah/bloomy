@@ -23,6 +23,7 @@ export const BG_AUTH_TOKEN_KEY = "bloomy_bg_auth_token";
 export const BG_BASE_URL_KEY = "bloomy_bg_base_url";
 export const CACHED_ALERTS_KEY = "bloomy_cached_alerts";
 const SEEN_IDS_KEY = "bloomy_seen_alert_ids";
+const WEEKLY_DIGEST_SENT_KEY = "bloomy_weekly_digest_sent_date";
 
 interface AlertItem {
   id: number;
@@ -96,6 +97,126 @@ async function fireNotificationsForAlerts(alerts: AlertItem[]): Promise<void> {
   );
 }
 
+// ─── Weekly digest ────────────────────────────────────────────────────────────
+
+interface DigestFarm {
+  id: number;
+  name: string;
+  cropType: string;
+  weeklyAlertCount: number;
+  criticalRiskTypes: string[];
+}
+
+interface WeeklyDigest {
+  farms: DigestFarm[];
+  totalAlerts: number;
+  generatedAt: string;
+}
+
+const RISK_LABELS: Record<string, string> = {
+  frost: "frost",
+  hard_freeze: "hard freeze",
+  heat_stress: "heat stress",
+  extreme_heat: "extreme heat",
+  drought: "drought",
+  harvest_disruption: "harvest disruption",
+  heavy_precipitation: "heavy rain",
+  high_wind: "high wind",
+  hail: "hail",
+  flash_flood: "flash flood",
+  late_season_frost: "late frost",
+  winter_storm: "winter storm",
+};
+
+function humanizeRisks(types: string[]): string {
+  return types
+    .slice(0, 3)
+    .map((t) => RISK_LABELS[t] ?? t.replace(/_/g, " "))
+    .join(", ");
+}
+
+async function checkAndFireWeeklyDigest(
+  token: string | null,
+  baseUrl: string | null
+): Promise<void> {
+  if (!token || !baseUrl) return;
+
+  // Only fire on Sundays
+  const now = new Date();
+  if (now.getDay() !== 0) return;
+
+  // Only within the 7 AM – 11 AM window
+  const hour = now.getHours();
+  if (hour < 7 || hour >= 11) return;
+
+  // Only once per Sunday — keyed by date string
+  const todayKey = now.toDateString();
+  const lastSent = await AsyncStorage.getItem(WEEKLY_DIGEST_SENT_KEY);
+  if (lastSent === todayKey) return;
+
+  try {
+    const resp = await fetch(`${baseUrl}/api/agriculture/weekly-digest`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!resp.ok) return;
+
+    const digest: WeeklyDigest = await resp.json();
+    const { farms, totalAlerts } = digest;
+
+    if (farms.length === 0) return; // No farms — nothing to digest
+
+    // ── Build notification copy ─────────────────────────────────────────────
+    const farmCount = farms.length;
+    const alertFarms = farms.filter((f) => f.weeklyAlertCount > 0);
+    const allCriticalTypes = [
+      ...new Set(farms.flatMap((f) => f.criticalRiskTypes)),
+    ];
+
+    let body: string;
+    if (totalAlerts === 0) {
+      const names = farms
+        .slice(0, 2)
+        .map((f) => f.name)
+        .join(" & ");
+      body =
+        farmCount === 1
+          ? `${farms[0].name} had a clear week — no weather alerts.`
+          : `${names}${farmCount > 2 ? ` + ${farmCount - 2} more` : ""} — all clear this week.`;
+    } else if (allCriticalTypes.length > 0) {
+      const riskStr = humanizeRisks(allCriticalTypes);
+      const farmStr =
+        alertFarms.length === 1
+          ? alertFarms[0].name
+          : `${alertFarms.length} farms`;
+      body = `${totalAlerts} alert${totalAlerts > 1 ? "s" : ""} this week: ${riskStr} detected on ${farmStr}.`;
+    } else {
+      body = `${totalAlerts} low-severity alert${totalAlerts > 1 ? "s" : ""} across ${farmCount} farm${farmCount > 1 ? "s" : ""} this week.`;
+    }
+
+    // Navigate to the farm screen if only one farm has issues, else Fields tab
+    const targetFarmId =
+      alertFarms.length === 1 ? alertFarms[0].id : null;
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Weekly Farm Digest",
+        body,
+        data: targetFarmId
+          ? { screen: "farm", farmProfileId: targetFarmId }
+          : { screen: "agriculture" },
+        sound: "default",
+      },
+      trigger: null,
+    });
+
+    // Record that we fired today's digest
+    await AsyncStorage.setItem(WEEKLY_DIGEST_SENT_KEY, todayKey);
+  } catch {
+    // Network or parse error — silently skip; will retry next background cycle
+  }
+}
+
 // ─── Task definition ─────────────────────────────────────────────────────────
 // Must be called at module level (not inside a component or function).
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
@@ -105,6 +226,9 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
       AsyncStorage.getItem(BG_BASE_URL_KEY),
       AsyncStorage.getItem(CACHED_ALERTS_KEY),
     ]);
+
+    // Weekly digest check runs independently of the alert poll
+    await checkAndFireWeeklyDigest(token, baseUrl);
 
     let alerts: AlertItem[] | null = null;
 
