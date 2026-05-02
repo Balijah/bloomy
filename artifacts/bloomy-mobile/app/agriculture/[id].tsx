@@ -470,7 +470,7 @@ export default function AgricultureDetailScreen() {
 
       {/* Scouting Log */}
       <View style={s.section}>
-        <ScoutingLogCard farmProfileId={farmId} />
+        <ScoutingLogCard farmProfileId={farmId} farmName={profile.name} />
       </View>
 
       {/* Crop Calendar */}

@@ -128,7 +128,21 @@ Server-side weekly digest cron (`artifacts/api-server/src/lib/weeklyDigest.ts`):
 - **Push channel**: Expo push notification to registered devices — single-farm personalised or multi-farm aggregate; chunked 100/request
 - Logs: `usersProcessed`, `emailSent`, `emailFailed`, `pushSuccess`, `pushFail`, `badTokens`
 
-Mobile (`app/_layout.tsx` → `PushTokenBridge`):
+## PDF Exports (mobile only)
+
+Farm Report (`lib/farmReport.ts` + farm detail screen share button):
+- Full-page PDF: season progress, current conditions, risk table, 7-day forecast grid, recommendations
+- Uses `expo-print` + `expo-sharing`; inline styles only (no network required for render)
+
+Scouting Report (`lib/scoutingReport.ts` + `ScoutingLogCard` "Share" button):
+- Filters to **critical and high** severity notes only, sorted by severity then newest first
+- Per-note: date, category badge, severity badge, full body text, photo attachment note
+- Includes action checkbox + sign-off block for spray crew / agronomist
+- Empty-state guard: shows alert if no critical/high notes exist
+- Note count subtitle updates to show e.g. "5 notes · 2 critical/high"
+- `farmName` prop added to `ScoutingLogCard`; passed from farm detail screen
+
+## Mobile (`app/_layout.tsx` → `PushTokenBridge`):
 - Calls `Notifications.getExpoPushTokenAsync()` on sign-in, registers with API
 - Unregisters token on sign-out (clean `push_tokens` table)
 - Token stored in AsyncStorage under `bloomy_push_token` key

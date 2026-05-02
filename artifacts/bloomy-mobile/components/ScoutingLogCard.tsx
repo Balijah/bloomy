@@ -9,12 +9,15 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Image,
+  Platform,
   Pressable,
   Text,
   TouchableOpacity,
@@ -28,6 +31,10 @@ import {
   getGetFieldNotesQueryKey,
 } from "@workspace/api-client-react";
 import type { FieldNote } from "@workspace/api-client-react";
+import {
+  generateScoutingReportHtml,
+  filterExportNotes,
+} from "@/lib/scoutingReport";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import AddNoteModal, { type NoteFormData } from "./AddNoteModal";
@@ -471,14 +478,16 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 
 interface Props {
   farmProfileId: number;
+  farmName?: string;
 }
 
-export default function ScoutingLogCard({ farmProfileId }: Props) {
+export default function ScoutingLogCard({ farmProfileId, farmName }: Props) {
   const colors = useColors();
   const queryClient = useQueryClient();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNote, setEditingNote] = useState<FieldNote | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const { data: notes, isLoading } = useGetFieldNotes(farmProfileId);
 
@@ -511,6 +520,45 @@ export default function ScoutingLogCard({ farmProfileId }: Props) {
       },
     },
   });
+
+  async function handleExport() {
+    const allNotes = notes ?? [];
+    const exportable = filterExportNotes(allNotes);
+
+    if (exportable.length === 0) {
+      Alert.alert(
+        "Nothing to export",
+        "There are no critical or high severity scouting notes for this farm.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      Alert.alert("Not supported", "PDF export is not available on web.");
+      return;
+    }
+
+    try {
+      setSharing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const html = generateScoutingReportHtml({
+        farmName: farmName ?? "Farm",
+        notes: allNotes,
+      });
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `${farmName ?? "Farm"} — Scouting Report`,
+        UTI: "com.adobe.pdf",
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_err) {
+      // sharing cancelled or unsupported — silently ignore
+    } finally {
+      setSharing(false);
+    }
+  }
 
   function openAdd() {
     setEditingNote(null);
@@ -573,11 +621,12 @@ export default function ScoutingLogCard({ farmProfileId }: Props) {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: 10,
           padding: 16,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {/* Icon + title */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
           <View
             style={{
               width: 36,
@@ -600,19 +649,59 @@ export default function ScoutingLogCard({ farmProfileId }: Props) {
             >
               Scouting Log
             </Text>
-            {notes && notes.length > 0 && (
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: "Outfit_400Regular",
-                  color: colors.mutedForeground,
-                }}
-              >
-                {notes.length} note{notes.length !== 1 ? "s" : ""}
-              </Text>
-            )}
+            {notes && notes.length > 0 && (() => {
+              const critHighCount = filterExportNotes(notes).length;
+              return (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "Outfit_400Regular",
+                    color: colors.mutedForeground,
+                  }}
+                >
+                  {notes.length} note{notes.length !== 1 ? "s" : ""}
+                  {critHighCount > 0 ? ` · ${critHighCount} critical/high` : ""}
+                </Text>
+              );
+            })()}
           </View>
         </View>
+
+        {/* Share report button */}
+        {notes && notes.length > 0 && (
+          <TouchableOpacity
+            onPress={handleExport}
+            disabled={sharing}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 11,
+              paddingVertical: 8,
+              borderRadius: 10,
+              backgroundColor: colors.muted,
+              borderWidth: 1,
+              borderColor: colors.border,
+              opacity: sharing ? 0.6 : 1,
+            }}
+            activeOpacity={0.82}
+          >
+            {sharing ? (
+              <ActivityIndicator size={14} color="#366441" />
+            ) : (
+              <Ionicons name="share-outline" size={15} color="#366441" />
+            )}
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: "Outfit_600SemiBold",
+                color: "#366441",
+              }}
+            >
+              {sharing ? "Exporting…" : "Share"}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Add button */}
         <TouchableOpacity
