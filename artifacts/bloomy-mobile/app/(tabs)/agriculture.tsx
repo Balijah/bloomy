@@ -85,11 +85,28 @@ export default function AgricultureScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
       <View style={[s(colors).header, { paddingTop: topPad + 16 }]}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={s(colors).headerTitle}>My Fields</Text>
-          <Text style={s(colors).headerSub}>{profiles?.length ?? 0} farm profile{profiles?.length !== 1 ? "s" : ""}</Text>
+          <Text style={s(colors).headerSub}>
+            {profiles?.length ?? 0} farm profile{profiles?.length !== 1 ? "s" : ""}
+          </Text>
         </View>
+        {/* Add button */}
+        <Pressable
+          style={({ pressed }) => [
+            s(colors).addBtn,
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/agriculture/new");
+          }}
+          testID="button-add-farm"
+        >
+          <Ionicons name="add" size={22} color="#fff" />
+        </Pressable>
       </View>
 
       <FlatList
@@ -110,6 +127,19 @@ export default function AgricultureScreen() {
             <Text style={s(colors).emptyText}>
               Add your fields to get crop-specific weather insights and growing degree day tracking.
             </Text>
+            <Pressable
+              style={({ pressed }) => [
+                s(colors).emptyBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/agriculture/new");
+              }}
+            >
+              <Ionicons name="add-circle" size={18} color="#fff" />
+              <Text style={s(colors).emptyBtnText}>Add your first farm</Text>
+            </Pressable>
           </View>
         }
         renderItem={({ item }) => (
@@ -161,6 +191,8 @@ export default function AgricultureScreen() {
 const s = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     header: {
+      flexDirection: "row",
+      alignItems: "center",
       paddingHorizontal: 20,
       paddingBottom: 16,
       borderBottomWidth: 1,
@@ -177,6 +209,14 @@ const s = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Outfit_400Regular",
       color: colors.mutedForeground,
       marginTop: 2,
+    },
+    addBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
     },
     listContent: { padding: 16, gap: 12 },
     card: {
@@ -228,6 +268,7 @@ const s = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       paddingTop: 60,
       paddingHorizontal: 32,
+      gap: 0,
     },
     emptyTitle: {
       fontSize: 20,
@@ -242,5 +283,20 @@ const s = (colors: ReturnType<typeof useColors>) =>
       color: colors.mutedForeground,
       textAlign: "center",
       lineHeight: 22,
+      marginBottom: 24,
+    },
+    emptyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 999,
+    },
+    emptyBtnText: {
+      fontSize: 15,
+      fontFamily: "Outfit_600SemiBold",
+      color: "#fff",
     },
   });
