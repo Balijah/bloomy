@@ -247,6 +247,12 @@ export function computeAgricultureInsights(
     feelsLikeMin: d.feelsLikeMin != null ? Math.round(d.feelsLikeMin * 10) / 10 : null,
   }));
 
+  const windDaily = next7.map((d: any) => ({
+    date: d.date,
+    windSpeedMax: Math.round(d.windSpeedMax * 10) / 10,
+    windGustMax: Math.round((d.windGustMax ?? d.windSpeedMax) * 10) / 10,
+  }));
+
   return {
     cropType,
     growingDegreeDays: 0,
@@ -259,6 +265,7 @@ export function computeAgricultureInsights(
     precipitationForecast: Math.round(precipForecast * 100) / 100,
     precipitationDaily,
     temperatureDaily,
+    windDaily,
     soilMoisture,
     evapotranspiration7Day: evapotranspiration7Day ? Math.round(evapotranspiration7Day * 100) / 100 : null,
     nextFrostDate,
