@@ -421,6 +421,14 @@ export const GetAgricultureInsightsResponse = zod.object({
       })
     )
     .describe("Per-day max wind speed and gust for next 7 days (mph)"),
+  uvDaily: zod
+    .array(
+      zod.object({
+        date: zod.coerce.date(),
+        uvIndexMax: zod.number(),
+      })
+    )
+    .describe("Per-day peak UV index for next 7 days"),
   soilMoisture: zod.number().nullish(),
   evapotranspiration7Day: zod.number().nullish(),
   nextFrostDate: zod.coerce.date().nullish(),
