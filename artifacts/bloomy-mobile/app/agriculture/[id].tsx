@@ -6,20 +6,25 @@ import {
   useGetAlerts,
   getGetFarmProfileQueryKey,
   getGetAgricultureInsightsQueryKey,
+  getGetLocationsQueryKey,
+  getGetAlertsQueryKey,
+  getGetFarmProfilesQueryKey,
 } from "@workspace/api-client-react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import FarmMap from "@/components/FarmMap";
@@ -127,6 +132,21 @@ export default function AgricultureDetailScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { id } = useLocalSearchParams<{ id: string }>();
   const farmId = id ? parseInt(id) : 0;
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetFarmProfileQueryKey(farmId) }),
+      queryClient.invalidateQueries({ queryKey: getGetAgricultureInsightsQueryKey(farmId) }),
+      queryClient.invalidateQueries({ queryKey: getGetFarmProfilesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetAlertsQueryKey({}) }),
+    ]);
+    setRefreshing(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [queryClient, farmId]);
 
   const { data: profile, isLoading: profileLoading } = useGetFarmProfile(
     farmId,
@@ -257,6 +277,15 @@ export default function AgricultureDetailScreen() {
         paddingBottom:
           Platform.OS === "web" ? 34 + 16 : insets.bottom + 24,
       }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+          progressViewOffset={topPad}
+        />
+      }
     >
       {/* Header */}
       <View style={[s.header, { paddingTop: topPad + 16 }]}>
