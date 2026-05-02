@@ -2,18 +2,19 @@
 
 ## Overview
 
-Bloomy is a U.S.-focused weather and agriculture platform with a freemium subscription model. Built as a pnpm monorepo with a React+Vite web frontend, Express API server, and PostgreSQL database.
+Bloomy is a U.S.-focused weather and agriculture platform with a freemium subscription model. Built as a pnpm monorepo with a React+Vite web frontend, Express API server, Expo mobile app, and PostgreSQL database.
 
 ## Architecture
 
 ```
 artifacts/
   bloomy-web/     — React+Vite web app (port 20612, path /)
+  bloomy-mobile/  — Expo (React Native) mobile app (port 21239, path /bloomy-mobile/)
   api-server/     — Express 5 API server (port 8080, path /api)
   mockup-sandbox/ — Design preview server (port 8081, path /__mockup)
 lib/
   api-spec/       — OpenAPI spec (openapi.yaml) + Orval codegen config
-  api-client-react/ — Generated React Query hooks
+  api-client-react/ — Generated React Query hooks (used by both web + mobile)
   api-zod/        — Generated Zod validation schemas
   db/             — Drizzle ORM schema + DB client
 ```
@@ -22,8 +23,9 @@ lib/
 
 - **Monorepo**: pnpm workspaces
 - **Node.js**: 24, **TypeScript**: 5.9
-- **Frontend**: React + Vite, Tailwind v4, shadcn/ui, wouter routing
-- **Auth**: Clerk (Replit-managed, `setupClerkWhitelabelAuth()` called)
+- **Web Frontend**: React + Vite, Tailwind v4, shadcn/ui, wouter routing
+- **Mobile**: Expo SDK 54, Expo Router v6, React Native 0.81
+- **Auth**: Clerk (`@clerk/react` for web, `@clerk/expo` for mobile)
 - **API**: Express 5, pino logging
 - **Database**: PostgreSQL + Drizzle ORM + drizzle-zod
 - **Validation**: Zod v4
@@ -31,6 +33,28 @@ lib/
 - **Payments**: Stripe (configured via env vars)
 - **Email**: SendGrid (configured via env vars)
 - **Weather data**: Open-Meteo API (free, no key required)
+
+## Design Tokens (shared web ↔ mobile)
+
+- **Font**: Outfit (400/500/600/700)
+- **Primary**: `#366441` light / `#4D8A5E` dark (forest green)
+- **Background**: `#FAF8F5` light / `#1A201A` dark (warm cream / dark green)
+- **Secondary**: `#CC9133` (amber)
+- **Radius**: 12px
+
+## Mobile App Screens (bloomy-mobile)
+
+- `app/_layout.tsx` — Root: ClerkProvider + Outfit fonts + QueryClient
+- `app/index.tsx` — Auth gate (redirects to sign-in or tabs)
+- `app/sign-in.tsx` — Email/password sign-in + sign-up + OTP verify
+- `app/(tabs)/index.tsx` — Dashboard: hero weather, hourly strip, 7/15-day forecast
+- `app/(tabs)/agriculture.tsx` — Farm profiles list with crop emoji + meta chips
+- `app/(tabs)/alerts.tsx` — Alerts list (mark read / delete)
+- `app/(tabs)/settings.tsx` — Profile, locations, subscription tier, sign out
+- `app/agriculture/[id].tsx` — Farm detail: GDD, risk cards, soil moisture, recommendations
+- `components/WeatherIcon.tsx` — WMO code → Ionicons/MaterialCommunityIcons
+- `constants/colors.ts` — Bloomy brand palette (light + dark)
+- `utils/tokenCache.ts` — Clerk secure token cache (SecureStore on native, in-memory on web)
 
 ## Subscription Tiers
 
@@ -74,6 +98,10 @@ Auto-provisioned:
 - `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`
 - `DATABASE_URL`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGHOST`
 - `SESSION_SECRET`
+
+Mobile (injected via dev script):
+- `EXPO_PUBLIC_DOMAIN` → from `$REPLIT_DEV_DOMAIN`
+- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` → from `$CLERK_PUBLISHABLE_KEY`
 
 Required (set manually):
 - `STRIPE_SECRET_KEY`, `STRIPE_PRICE_GROWER`, `STRIPE_PRICE_GROWER_PRO`
