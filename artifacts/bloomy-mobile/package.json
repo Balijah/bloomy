@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@clerk/expo": "^2.19.0",
+    "@clerk/expo": "^3.2.7",
     "@expo-google-fonts/outfit": "^0.4.3",
     "@expo/cli": "54.0.23",
     "@expo/ngrok": "^4.1.0",
@@ -59,6 +59,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "expo-auth-session": "^55.0.15"
+    "expo-auth-session": "^55.0.15",
+    "expo-notifications": "^55.0.22"
   }
 }

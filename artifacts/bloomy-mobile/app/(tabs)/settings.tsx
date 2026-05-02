@@ -1,7 +1,13 @@
-import { useGetMe, useGetCurrentSubscription, useGetLocations, useCreateLocation } from "@workspace/api-client-react";
+import {
+  useGetMe,
+  useGetCurrentSubscription,
+  useGetLocations,
+  useCreateLocation,
+} from "@workspace/api-client-react";
 import { useAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Linking } from "react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -10,12 +16,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   free: { label: "Free", color: "#6E736E" },
@@ -30,6 +38,7 @@ function SettingRow({
   onPress,
   destructive,
   testID,
+  right,
 }: {
   icon: string;
   label: string;
@@ -37,25 +46,51 @@ function SettingRow({
   onPress?: () => void;
   destructive?: boolean;
   testID?: string;
+  right?: React.ReactNode;
 }) {
   const colors = useColors();
   return (
     <Pressable
-      style={({ pressed }) => [rowStyles(colors).row, pressed && onPress && { opacity: 0.7 }]}
+      style={({ pressed }) => [
+        rowStyles(colors).row,
+        pressed && onPress && { opacity: 0.7 },
+      ]}
       onPress={onPress}
-      disabled={!onPress}
+      disabled={!onPress && !right}
       testID={testID}
     >
-      <View style={[rowStyles(colors).icon, destructive && { backgroundColor: colors.destructive + "22" }]}>
+      <View
+        style={[
+          rowStyles(colors).icon,
+          destructive && { backgroundColor: colors.destructive + "22" },
+        ]}
+      >
         <Ionicons
           name={icon as any}
           size={18}
           color={destructive ? colors.destructive : colors.primary}
         />
       </View>
-      <Text style={[rowStyles(colors).label, destructive && { color: colors.destructive }]}>{label}</Text>
-      {value && <Text style={rowStyles(colors).value}>{value}</Text>}
-      {onPress && <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />}
+      <Text
+        style={[
+          rowStyles(colors).label,
+          destructive && { color: colors.destructive },
+        ]}
+      >
+        {label}
+      </Text>
+      {right ?? (
+        <>
+          {value && <Text style={rowStyles(colors).value}>{value}</Text>}
+          {onPress && (
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.mutedForeground}
+            />
+          )}
+        </>
+      )}
     </Pressable>
   );
 }
@@ -114,7 +149,15 @@ function SectionHeader({ title }: { title: string }) {
 
 function Divider() {
   const colors = useColors();
-  return <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 20 }} />;
+  return (
+    <View
+      style={{
+        height: 1,
+        backgroundColor: colors.border,
+        marginHorizontal: 20,
+      }}
+    />
+  );
 }
 
 export default function SettingsScreen() {
@@ -122,6 +165,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { signOut } = useAuth();
+  const { permission, enabled, requestAndEnable, setEnabled } =
+    useNotifications();
 
   const { data: user, isLoading: isUserLoading } = useGetMe();
   const { data: sub } = useGetCurrentSubscription();
@@ -135,6 +180,25 @@ export default function SettingsScreen() {
 
   const tier = user?.subscriptionTier ?? "free";
   const tierInfo = TIER_LABELS[tier] ?? TIER_LABELS.free;
+
+  const notifUnavailable = Platform.OS === "web";
+  const notifDenied = permission === "denied";
+
+  async function handleToggleNotifications(val: boolean) {
+    if (notifUnavailable) return;
+    if (val && permission !== "granted") {
+      await requestAndEnable();
+      return;
+    }
+    Haptics.selectionAsync();
+    await setEnabled(val);
+  }
+
+  async function handleOpenSettings() {
+    if (Platform.OS !== "web") {
+      await Linking.openSettings();
+    }
+  }
 
   async function handleSignOut() {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -158,7 +222,14 @@ export default function SettingsScreen() {
       return;
     }
     createLocation.mutate(
-      { data: { name: locName.trim(), lat, lng, isDefault: !locations?.length } },
+      {
+        data: {
+          name: locName.trim(),
+          lat,
+          lng,
+          isDefault: !locations?.length,
+        },
+      },
       {
         onSuccess: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -176,7 +247,14 @@ export default function SettingsScreen() {
 
   if (isUserLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -186,25 +264,140 @@ export default function SettingsScreen() {
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 84 + 16 : insets.bottom + 80 }}
+      contentContainerStyle={{
+        paddingBottom:
+          Platform.OS === "web" ? 84 + 16 : insets.bottom + 80,
+      }}
     >
       {/* Profile header */}
       <View style={[s(colors).profileHeader, { paddingTop: topPad + 16 }]}>
         <View style={s(colors).avatar}>
           <Text style={s(colors).avatarText}>
-            {user?.firstName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? "G"}
+            {user?.firstName?.[0]?.toUpperCase() ??
+              user?.email?.[0]?.toUpperCase() ??
+              "G"}
           </Text>
         </View>
         <View>
           <Text style={s(colors).profileName}>
-            {user?.firstName ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}` : "Grower"}
+            {user?.firstName
+              ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+              : "Grower"}
           </Text>
           <Text style={s(colors).profileEmail}>{user?.email}</Text>
-          <View style={[s(colors).tierBadge, { borderColor: tierInfo.color + "55" }]}>
-            <View style={[s(colors).tierDot, { backgroundColor: tierInfo.color }]} />
-            <Text style={[s(colors).tierText, { color: tierInfo.color }]}>{tierInfo.label}</Text>
+          <View
+            style={[
+              s(colors).tierBadge,
+              { borderColor: tierInfo.color + "55" },
+            ]}
+          >
+            <View
+              style={[s(colors).tierDot, { backgroundColor: tierInfo.color }]}
+            />
+            <Text style={[s(colors).tierText, { color: tierInfo.color }]}>
+              {tierInfo.label}
+            </Text>
           </View>
         </View>
+      </View>
+
+      {/* Notifications */}
+      <SectionHeader title="Notifications" />
+      <View style={s(colors).sectionCard}>
+        {notifUnavailable ? (
+          <SettingRow
+            icon="notifications-outline"
+            label="Push Notifications"
+            value="Not available on web"
+            testID="row-notifications-web"
+          />
+        ) : notifDenied ? (
+          <>
+            <SettingRow
+              icon="notifications-off-outline"
+              label="Push Notifications"
+              value="Blocked"
+              onPress={handleOpenSettings}
+              testID="row-notifications-denied"
+            />
+            <Divider />
+            <Pressable
+              style={({ pressed }) => [
+                s(colors).openSettingsBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={handleOpenSettings}
+              testID="button-open-settings"
+            >
+              <Ionicons
+                name="settings-outline"
+                size={15}
+                color={colors.primary}
+              />
+              <Text style={s(colors).openSettingsBtnText}>
+                Open device settings to allow notifications
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <SettingRow
+              icon={enabled ? "notifications" : "notifications-outline"}
+              label="Weather Alerts"
+              testID="row-notifications-toggle"
+              right={
+                <Switch
+                  value={enabled}
+                  onValueChange={handleToggleNotifications}
+                  trackColor={{
+                    false: colors.muted,
+                    true: colors.primary + "88",
+                  }}
+                  thumbColor={enabled ? colors.primary : colors.mutedForeground}
+                  testID="switch-notifications"
+                />
+              }
+            />
+            {enabled && (
+              <>
+                <Divider />
+                <View style={s(colors).notifInfoRow}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                  <Text style={s(colors).notifInfoText}>
+                    You'll be notified when frost, extreme heat, or severe
+                    weather is detected for your locations.
+                  </Text>
+                </View>
+              </>
+            )}
+            {permission !== "granted" && !enabled && (
+              <>
+                <Divider />
+                <Pressable
+                  style={({ pressed }) => [
+                    s(colors).enableNotifBtn,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => requestAndEnable()}
+                  testID="button-enable-notifications"
+                >
+                  <Ionicons
+                    name="notifications-outline"
+                    size={18}
+                    color={colors.primaryForeground}
+                  />
+                  <Text style={s(colors).enableNotifBtnText}>
+                    Enable Notifications
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </>
+        )}
       </View>
 
       {/* Locations */}
@@ -223,12 +416,21 @@ export default function SettingsScreen() {
         ))}
         {(locations?.length ?? 0) > 0 && <Divider />}
         <Pressable
-          style={({ pressed }) => [s(colors).addLocBtn, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [
+            s(colors).addLocBtn,
+            pressed && { opacity: 0.8 },
+          ]}
           onPress={() => setAddingLocation(!addingLocation)}
           testID="button-add-location"
         >
-          <Ionicons name={addingLocation ? "close-outline" : "add"} size={20} color={colors.primary} />
-          <Text style={s(colors).addLocText}>{addingLocation ? "Cancel" : "Add location"}</Text>
+          <Ionicons
+            name={addingLocation ? "close-outline" : "add"}
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={s(colors).addLocText}>
+            {addingLocation ? "Cancel" : "Add location"}
+          </Text>
         </Pressable>
 
         {addingLocation && (
@@ -262,13 +464,19 @@ export default function SettingsScreen() {
               />
             </View>
             <Pressable
-              style={({ pressed }) => [s(colors).saveLocBtn, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [
+                s(colors).saveLocBtn,
+                pressed && { opacity: 0.8 },
+              ]}
               onPress={handleAddLocation}
               disabled={createLocation.isPending}
               testID="button-save-location"
             >
               {createLocation.isPending ? (
-                <ActivityIndicator size="small" color={colors.primaryForeground} />
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primaryForeground}
+                />
               ) : (
                 <Text style={s(colors).saveLocBtnText}>Save Location</Text>
               )}
@@ -370,6 +578,49 @@ const s = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
       overflow: "hidden",
+    },
+    notifInfoRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.muted,
+    },
+    notifInfoText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Outfit_400Regular",
+      color: colors.mutedForeground,
+      lineHeight: 19,
+    },
+    enableNotifBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.primary,
+      margin: 12,
+      borderRadius: 999,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      justifyContent: "center",
+    },
+    enableNotifBtnText: {
+      fontSize: 15,
+      fontFamily: "Outfit_600SemiBold",
+      color: colors.primaryForeground,
+    },
+    openSettingsBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    openSettingsBtnText: {
+      fontSize: 13,
+      fontFamily: "Outfit_400Regular",
+      color: colors.primary,
     },
     addLocBtn: {
       flexDirection: "row",

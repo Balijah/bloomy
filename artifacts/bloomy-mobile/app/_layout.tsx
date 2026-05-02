@@ -7,18 +7,20 @@ import {
   useFonts,
 } from "@expo-google-fonts/outfit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { tokenCache } from "@/utils/tokenCache";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
-// Set API base URL from env — Expo bundles run outside the web proxy
 if (process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 }
@@ -41,17 +43,40 @@ function AuthTokenBridge() {
   return null;
 }
 
+function NotificationResponseHandler() {
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as Record<
+          string,
+          unknown
+        >;
+        if (data?.screen === "alerts" || data?.alertId) {
+          router.push("/(tabs)/alerts");
+        }
+      }
+    );
+    return () => sub.remove();
+  }, []);
+  return null;
+}
+
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="agriculture/[id]"
-        options={{ headerShown: false, presentation: "card" }}
-      />
-    </Stack>
+    <>
+      <NotificationResponseHandler />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="agriculture/[id]"
+          options={{ headerShown: false, presentation: "card" }}
+        />
+      </Stack>
+    </>
   );
 }
 
@@ -77,11 +102,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <NotificationsProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </NotificationsProvider>
           </QueryClientProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
