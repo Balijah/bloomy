@@ -239,6 +239,14 @@ export function computeAgricultureInsights(
     precipitationProbability: d.precipitationProbability ?? 0,
   }));
 
+  const temperatureDaily = next7.map((d: any) => ({
+    date: d.date,
+    tempMax: Math.round(d.tempMax * 10) / 10,
+    tempMin: Math.round(d.tempMin * 10) / 10,
+    feelsLikeMax: d.feelsLikeMax != null ? Math.round(d.feelsLikeMax * 10) / 10 : null,
+    feelsLikeMin: d.feelsLikeMin != null ? Math.round(d.feelsLikeMin * 10) / 10 : null,
+  }));
+
   return {
     cropType,
     growingDegreeDays: 0,
@@ -250,6 +258,7 @@ export function computeAgricultureInsights(
     precipitationDeficit: Math.round(precipDeficit * 100) / 100,
     precipitationForecast: Math.round(precipForecast * 100) / 100,
     precipitationDaily,
+    temperatureDaily,
     soilMoisture,
     evapotranspiration7Day: evapotranspiration7Day ? Math.round(evapotranspiration7Day * 100) / 100 : null,
     nextFrostDate,

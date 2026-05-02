@@ -401,6 +401,17 @@ export const GetAgricultureInsightsResponse = zod.object({
       })
     )
     .describe("Per-day precipitation for next 7 days"),
+  temperatureDaily: zod
+    .array(
+      zod.object({
+        date: zod.coerce.date(),
+        tempMax: zod.number(),
+        tempMin: zod.number(),
+        feelsLikeMax: zod.number().nullish(),
+        feelsLikeMin: zod.number().nullish(),
+      })
+    )
+    .describe("Per-day high/low temperature for next 7 days (°F)"),
   soilMoisture: zod.number().nullish(),
   evapotranspiration7Day: zod.number().nullish(),
   nextFrostDate: zod.coerce.date().nullish(),

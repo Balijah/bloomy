@@ -30,6 +30,7 @@ import { useColors } from "@/hooks/useColors";
 import FarmMap from "@/components/FarmMap";
 import CropCalendar from "@/components/CropCalendar";
 import PrecipChart from "@/components/PrecipChart";
+import TempChart from "@/components/TempChart";
 
 const RISK_COLORS: Record<string, string> = {
   critical: "#F23030",
@@ -435,6 +436,14 @@ export default function AgricultureDetailScreen() {
           )}
         </View>
       </View>
+
+      {/* Temperature Chart */}
+      {insights.temperatureDaily && insights.temperatureDaily.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Temperature Forecast</Text>
+          <TempChart data={insights.temperatureDaily} />
+        </View>
+      )}
 
       {/* Precipitation Chart */}
       {insights.precipitationDaily && insights.precipitationDaily.length > 0 && (
