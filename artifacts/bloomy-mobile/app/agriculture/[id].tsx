@@ -37,6 +37,7 @@ import CropStageTracker from "@/components/CropStageTracker";
 import YieldForecastCard from "@/components/YieldForecastCard";
 import SoilHealthCard from "@/components/SoilHealthCard";
 import FrostCountdownCard from "@/components/FrostCountdownCard";
+import SprayWindowCard from "@/components/SprayWindowCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -451,6 +452,12 @@ export default function AgricultureDetailScreen() {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Frost Countdown</Text>
         <FrostCountdownCard insights={insights} cropType={profile.cropType} />
+      </View>
+
+      {/* Spray Windows */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Spray Windows</Text>
+        <SprayWindowCard insights={insights} />
       </View>
 
       {/* Crop Calendar */}
