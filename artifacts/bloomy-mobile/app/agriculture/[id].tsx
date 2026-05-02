@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
+import * as Haptics from "expo-haptics";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -274,6 +275,17 @@ export default function AgricultureDetailScreen() {
               .replace(/\b\w/g, (c) => c.toUpperCase())}
           </Text>
         </View>
+        <Pressable
+          style={({ pressed }) => [s.editBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.push(`/agriculture/edit/${farmId}`);
+          }}
+          testID="button-edit-farm"
+        >
+          <Ionicons name="create-outline" size={17} color={colors.foreground} />
+          <Text style={[s.editBtnText, { color: colors.foreground }]}>Edit</Text>
+        </Pressable>
       </View>
 
       {/* Map — shows all farm locations with alert overlay */}
@@ -440,6 +452,20 @@ const styles = (
       color: colors.mutedForeground,
       marginTop: 3,
       textTransform: "capitalize",
+    },
+    editBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      borderWidth: 1,
+      marginTop: 2,
+    },
+    editBtnText: {
+      fontSize: 13,
+      fontFamily: "Outfit_600SemiBold",
     },
     mapWrapper: {
       marginHorizontal: 16,
