@@ -122,9 +122,11 @@ Required (set manually):
 
 Server-side weekly digest cron (`artifacts/api-server/src/lib/weeklyDigest.ts`):
 - Runs every **Sunday at 19:00 UTC** via `node-cron`
-- For each user with registered push tokens: counts farms, recent critical/high alerts (7 days), critical/high field notes (30 days)
-- Sends personalised Expo push notification (single-farm: farm-specific; multi-farm: aggregate summary)
-- Uses `expo-server-sdk` chunked sending (100/request) with stale-token logging
+- Starts from **all users with farms** (not just push-token holders), then filters by `weeklyDigestEnabled`
+- For each opted-in user: counts farms, recent critical/high alerts (7 days), critical/high field notes (30 days) filtered by `digestMinSeverity`
+- **Email channel** (`artifacts/api-server/src/lib/digestEmail.ts`): branded HTML email via SendGrid (`@sendgrid/mail`) — per-farm table with alert/note counts, "All Clear" vs critical summary banner, plain-text fallback
+- **Push channel**: Expo push notification to registered devices — single-farm personalised or multi-farm aggregate; chunked 100/request
+- Logs: `usersProcessed`, `emailSent`, `emailFailed`, `pushSuccess`, `pushFail`, `badTokens`
 
 Mobile (`app/_layout.tsx` → `PushTokenBridge`):
 - Calls `Notifications.getExpoPushTokenAsync()` on sign-in, registers with API
