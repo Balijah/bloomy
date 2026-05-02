@@ -13,12 +13,18 @@ import {
   getPermissionStatus,
   requestPermissions,
 } from "@/utils/notifications";
+import {
+  isBackgroundFetchRegistered,
+  registerBackgroundFetch,
+  unregisterBackgroundFetch,
+} from "@/utils/backgroundAlerts";
 
 const NOTIFICATIONS_ENABLED_KEY = "bloomy_notifications_enabled";
 
 interface NotificationsContextValue {
   permission: string;
   enabled: boolean;
+  backgroundFetchActive: boolean;
   requestAndEnable: () => Promise<void>;
   setEnabled: (val: boolean) => Promise<void>;
 }
@@ -26,6 +32,7 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue>({
   permission: "undetermined",
   enabled: false,
+  backgroundFetchActive: false,
   requestAndEnable: async () => {},
   setEnabled: async () => {},
 });
@@ -37,6 +44,7 @@ export function NotificationsProvider({
 }) {
   const [permission, setPermission] = useState("undetermined");
   const [enabled, setEnabledState] = useState(false);
+  const [backgroundFetchActive, setBackgroundFetchActive] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -48,6 +56,15 @@ export function NotificationsProvider({
       const stored = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY);
       const shouldEnable = stored === "true" && status === "granted";
       setEnabledState(shouldEnable);
+
+      // Sync background fetch registration with the stored enabled state
+      if (shouldEnable) {
+        await registerBackgroundFetch();
+        setBackgroundFetchActive(await isBackgroundFetchRegistered());
+      } else {
+        await unregisterBackgroundFetch();
+        setBackgroundFetchActive(false);
+      }
     }
     init();
   }, []);
@@ -66,12 +83,10 @@ export function NotificationsProvider({
     return () => sub.remove();
   }, []);
 
-  // Listen for notification taps (handled in _layout.tsx via router)
+  // Foreground notification listener (no extra action needed — handler set in notifications.ts)
   useEffect(() => {
     if (Platform.OS === "web") return;
-    const sub = Notifications.addNotificationReceivedListener(() => {
-      // Notification received while app is in foreground — no extra action needed
-    });
+    const sub = Notifications.addNotificationReceivedListener(() => {});
     return () => sub.remove();
   }, []);
 
@@ -83,20 +98,30 @@ export function NotificationsProvider({
     if (granted) {
       setEnabledState(true);
       await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, "true");
+      await registerBackgroundFetch();
+      setBackgroundFetchActive(await isBackgroundFetchRegistered());
     }
   }, []);
 
   const setEnabled = useCallback(async (val: boolean) => {
     setEnabledState(val);
-    await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, val ? "true" : "false");
-    if (!val) {
+    await AsyncStorage.setItem(
+      NOTIFICATIONS_ENABLED_KEY,
+      val ? "true" : "false"
+    );
+    if (val) {
+      await registerBackgroundFetch();
+      setBackgroundFetchActive(await isBackgroundFetchRegistered());
+    } else {
+      await unregisterBackgroundFetch();
+      setBackgroundFetchActive(false);
       await clearBadge();
     }
   }, []);
 
   return (
     <NotificationsContext.Provider
-      value={{ permission, enabled, requestAndEnable, setEnabled }}
+      value={{ permission, enabled, backgroundFetchActive, requestAndEnable, setEnabled }}
     >
       {children}
     </NotificationsContext.Provider>

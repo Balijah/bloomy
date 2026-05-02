@@ -3,6 +3,7 @@ import {
   useMarkAlertRead,
   useDeleteAlert,
 } from "@workspace/api-client-react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef } from "react";
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { notifyNewAlerts } from "@/utils/notifications";
+import { CACHED_ALERTS_KEY } from "@/utils/backgroundAlerts";
 import { format, parseISO } from "date-fns";
 
 const ALERT_TYPE_ICONS: Record<string, string> = {
@@ -54,22 +56,29 @@ export default function AlertsScreen() {
   const markRead = useMarkAlertRead();
   const deleteAlert = useDeleteAlert();
 
-  // Fire notifications when new unread alerts arrive
-  const prevAlertCountRef = useRef<number>(-1);
+  // Persist alerts to AsyncStorage so the background task can use them
+  useEffect(() => {
+    if (!alerts || Platform.OS === "web") return;
+    AsyncStorage.setItem(CACHED_ALERTS_KEY, JSON.stringify(alerts)).catch(
+      () => {}
+    );
+  }, [alerts]);
+
+  // Fire notifications when unread count increases (new alerts arrived while app open)
+  const prevUnreadCountRef = useRef<number>(-1);
   useEffect(() => {
     if (!alerts || !notificationsEnabled || Platform.OS === "web") return;
     const unreadCount = alerts.filter((a) => !a.isRead).length;
-    // Only notify when count increases (new alerts arrived)
     if (
-      prevAlertCountRef.current >= 0 &&
-      unreadCount > prevAlertCountRef.current
+      prevUnreadCountRef.current >= 0 &&
+      unreadCount > prevUnreadCountRef.current
     ) {
       notifyNewAlerts(alerts as Parameters<typeof notifyNewAlerts>[0]);
     }
-    prevAlertCountRef.current = unreadCount;
+    prevUnreadCountRef.current = unreadCount;
   }, [alerts, notificationsEnabled]);
 
-  // Notify on initial load when there are unread alerts (app was opened from scratch)
+  // Notify on initial load for any pre-existing unread alerts
   const hasNotifiedInitial = useRef(false);
   useEffect(() => {
     if (
@@ -172,7 +181,6 @@ export default function AlertsScreen() {
                 s(colors).alertCard,
                 item.isRead && s(colors).alertCardRead,
               ]}
-              testID={`alert-card-${item.id}`}
             >
               <View
                 style={[
@@ -223,7 +231,6 @@ export default function AlertsScreen() {
                       pressed && { opacity: 0.7 },
                     ]}
                     onPress={() => handleMarkRead(item.id)}
-                    testID={`button-mark-read-${item.id}`}
                   >
                     <Ionicons
                       name="checkmark"
@@ -238,7 +245,6 @@ export default function AlertsScreen() {
                     pressed && { opacity: 0.7 },
                   ]}
                   onPress={() => handleDelete(item.id)}
-                  testID={`button-delete-alert-${item.id}`}
                 >
                   <Ionicons
                     name="trash-outline"

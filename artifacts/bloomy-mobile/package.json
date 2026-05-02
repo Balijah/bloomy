@@ -60,6 +60,8 @@
   },
   "dependencies": {
     "expo-auth-session": "^55.0.15",
-    "expo-notifications": "^55.0.22"
+    "expo-background-fetch": "^55.0.15",
+    "expo-notifications": "^55.0.22",
+    "expo-task-manager": "^55.0.15"
   }
 }

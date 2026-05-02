@@ -165,8 +165,13 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { signOut } = useAuth();
-  const { permission, enabled, requestAndEnable, setEnabled } =
-    useNotifications();
+  const {
+    permission,
+    enabled,
+    backgroundFetchActive,
+    requestAndEnable,
+    setEnabled,
+  } = useNotifications();
 
   const { data: user, isLoading: isUserLoading } = useGetMe();
   const { data: sub } = useGetCurrentSubscription();
@@ -218,7 +223,10 @@ export default function SettingsScreen() {
     const lat = parseFloat(locLat);
     const lng = parseFloat(locLng);
     if (!locName.trim() || isNaN(lat) || isNaN(lng)) {
-      Alert.alert("Invalid input", "Please enter a name, latitude, and longitude.");
+      Alert.alert(
+        "Invalid input",
+        "Please enter a name, latitude, and longitude."
+      );
       return;
     }
     createLocation.mutate(
@@ -265,8 +273,7 @@ export default function SettingsScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        paddingBottom:
-          Platform.OS === "web" ? 84 + 16 : insets.bottom + 80,
+        paddingBottom: Platform.OS === "web" ? 84 + 16 : insets.bottom + 80,
       }}
     >
       {/* Profile header */}
@@ -361,6 +368,37 @@ export default function SettingsScreen() {
             {enabled && (
               <>
                 <Divider />
+                {/* Background fetch status row */}
+                <View style={s(colors).statusRow}>
+                  <Ionicons
+                    name={
+                      backgroundFetchActive
+                        ? "time-outline"
+                        : "time-outline"
+                    }
+                    size={16}
+                    color={
+                      backgroundFetchActive
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                  />
+                  <Text
+                    style={[
+                      s(colors).statusText,
+                      {
+                        color: backgroundFetchActive
+                          ? colors.primary
+                          : colors.mutedForeground,
+                      },
+                    ]}
+                  >
+                    {backgroundFetchActive
+                      ? "Background polling active · checks every 15 min"
+                      : "Background polling unavailable in Expo Go"}
+                  </Text>
+                </View>
+                <Divider />
                 <View style={s(colors).notifInfoRow}>
                   <Ionicons
                     name="information-circle-outline"
@@ -369,7 +407,8 @@ export default function SettingsScreen() {
                   />
                   <Text style={s(colors).notifInfoText}>
                     You'll be notified when frost, extreme heat, or severe
-                    weather is detected for your locations.
+                    weather is detected for your locations — even when the app
+                    is closed.
                   </Text>
                 </View>
               </>
@@ -578,6 +617,20 @@ const s = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
       overflow: "hidden",
+    },
+    statusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: colors.muted,
+    },
+    statusText: {
+      flex: 1,
+      fontSize: 12,
+      fontFamily: "Outfit_400Regular",
+      lineHeight: 17,
     },
     notifInfoRow: {
       flexDirection: "row",
