@@ -36,6 +36,7 @@ import UVChart from "@/components/UVChart";
 import CropStageTracker from "@/components/CropStageTracker";
 import YieldForecastCard from "@/components/YieldForecastCard";
 import SoilHealthCard from "@/components/SoilHealthCard";
+import FrostCountdownCard from "@/components/FrostCountdownCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -444,6 +445,12 @@ export default function AgricultureDetailScreen() {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Soil Health</Text>
         <SoilHealthCard insights={insights} />
+      </View>
+
+      {/* Frost Countdown */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Frost Countdown</Text>
+        <FrostCountdownCard insights={insights} cropType={profile.cropType} />
       </View>
 
       {/* Crop Calendar */}
