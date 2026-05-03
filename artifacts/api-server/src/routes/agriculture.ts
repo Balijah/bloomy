@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, inArray, desc } from "drizzle-orm";
 import { db, farmProfilesTable, locationsTable, alertsTable } from "@workspace/db";
 import {
   GetFarmProfilesResponse,
@@ -300,6 +300,50 @@ router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res)
     farmProfileId: profile.id,
     ...insights,
   }));
+});
+
+// ─── Farm risk history endpoint ───────────────────────────────────────────────
+// Returns stored alert records for a specific farm filtered to agricultural
+// risk types (frost, heat_stress, drought, harvest_disruption), newest first.
+
+router.get("/agriculture/farm-profiles/:id/risk-history", requireAuth, async (req, res): Promise<void> => {
+  const userId = await getUserId(req);
+
+  const farmId = Number(req.params.id);
+  if (isNaN(farmId)) {
+    res.status(400).json({ error: "Invalid farm profile id" });
+    return;
+  }
+
+  const limit = Math.min(Number(req.query.limit ?? 30), 100);
+
+  const RISK_TYPES = ["frost", "heat_stress", "drought", "harvest_disruption"] as const;
+
+  const [profile] = await db
+    .select({ id: farmProfilesTable.id })
+    .from(farmProfilesTable)
+    .where(and(eq(farmProfilesTable.id, farmId), eq(farmProfilesTable.userId, userId)))
+    .limit(1);
+
+  if (!profile) {
+    res.status(404).json({ error: "Farm profile not found" });
+    return;
+  }
+
+  const history = await db
+    .select()
+    .from(alertsTable)
+    .where(
+      and(
+        eq(alertsTable.userId, userId),
+        eq(alertsTable.farmProfileId, farmId),
+        inArray(alertsTable.type, [...RISK_TYPES])
+      )
+    )
+    .orderBy(desc(alertsTable.triggeredAt))
+    .limit(limit);
+
+  res.json(history);
 });
 
 // ─── Spray window alerts endpoint ────────────────────────────────────────────

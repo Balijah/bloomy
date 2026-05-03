@@ -1012,6 +1012,10 @@ export type GetHourlyForecastParams = {
   lng: number;
 };
 
+export type GetFarmRiskHistoryParams = {
+  limit?: number;
+};
+
 export type GetAlertsParams = {
   unreadOnly?: boolean;
   /**

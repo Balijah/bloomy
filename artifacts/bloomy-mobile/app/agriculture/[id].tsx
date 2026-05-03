@@ -6,6 +6,7 @@ import {
   useGetAlerts,
   useGetInputCosts,
   useGetYieldRecords,
+  useGetFarmRiskHistory,
   getGetFarmProfileQueryKey,
   getGetAgricultureInsightsQueryKey,
   getGetLocationsQueryKey,
@@ -13,6 +14,7 @@ import {
   getGetFarmProfilesQueryKey,
   getGetInputCostsQueryKey,
   getGetYieldRecordsQueryKey,
+  getGetFarmRiskHistoryQueryKey,
 } from "@workspace/api-client-react";
 import type {
   AgricultureInsightsDailyTemp,
@@ -54,6 +56,7 @@ import YieldGoalCard from "@/components/YieldGoalCard";
 import YieldHistoryCard from "@/components/YieldHistoryCard";
 import InsuranceCard from "@/components/InsuranceCard";
 import InputCostCard from "@/components/InputCostCard";
+import RiskHistoryCard from "@/components/RiskHistoryCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -536,6 +539,13 @@ export default function AgricultureDetailScreen() {
   const { data: yieldRecords = [] } = useGetYieldRecords(farmId, {
     query: { enabled: !!farmId, queryKey: getGetYieldRecordsQueryKey(farmId) },
   });
+  const { data: riskHistory = [], isLoading: riskHistoryLoading } =
+    useGetFarmRiskHistory(farmId, undefined, {
+      query: {
+        enabled: !!farmId,
+        queryKey: getGetFarmRiskHistoryQueryKey(farmId),
+      },
+    });
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -545,6 +555,7 @@ export default function AgricultureDetailScreen() {
       queryClient.invalidateQueries({ queryKey: getGetFarmProfilesQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetAlertsQueryKey({}) }),
+      queryClient.invalidateQueries({ queryKey: getGetFarmRiskHistoryQueryKey(farmId) }),
     ]);
     setRefreshing(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1108,6 +1119,15 @@ export default function AgricultureDetailScreen() {
           </View>
         </View>
       )}
+
+      {/* Risk History */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Risk History</Text>
+        <RiskHistoryCard
+          history={riskHistory}
+          isLoading={riskHistoryLoading}
+        />
+      </View>
 
       {/* Share Report footer CTA */}
       <View style={s.shareFooter}>

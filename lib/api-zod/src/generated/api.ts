@@ -917,6 +917,50 @@ export const DeleteInputCostParams = zod.object({
 });
 
 /**
+ * @summary List historical risk alerts for a farm profile
+ */
+export const GetFarmRiskHistoryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const getFarmRiskHistoryQueryLimitDefault = 30;
+
+export const GetFarmRiskHistoryQueryParams = zod.object({
+  limit: zod.coerce.number().default(getFarmRiskHistoryQueryLimitDefault),
+});
+
+export const GetFarmRiskHistoryResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  locationId: zod.number().nullish(),
+  farmProfileId: zod.number().nullish(),
+  type: zod.enum([
+    "frost",
+    "hard_freeze",
+    "extreme_heat",
+    "heat_stress",
+    "heavy_precipitation",
+    "flash_flood",
+    "drought",
+    "high_wind",
+    "hail",
+    "harvest_disruption",
+    "late_season_frost",
+    "winter_storm",
+  ]),
+  severity: zod.enum(["watch", "warning", "critical"]),
+  title: zod.string(),
+  message: zod.string(),
+  triggerValue: zod.number().nullish(),
+  isRead: zod.boolean(),
+  triggeredAt: zod.coerce.date(),
+  expiresAt: zod.coerce.date().nullish(),
+});
+export const GetFarmRiskHistoryResponse = zod.array(
+  GetFarmRiskHistoryResponseItem,
+);
+
+/**
  * @summary Get crop-specific weather insights for a farm profile
  */
 export const GetAgricultureInsightsParams = zod.object({

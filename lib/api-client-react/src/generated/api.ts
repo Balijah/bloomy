@@ -35,6 +35,7 @@ import type {
   GetAlertsParams,
   GetCurrentWeatherParams,
   GetDashboardSummaryParams,
+  GetFarmRiskHistoryParams,
   GetForecastParams,
   GetHourlyForecastParams,
   HealthStatus,
@@ -2457,6 +2458,119 @@ export const useDeleteInputCost = <
 > => {
   return useMutation(getDeleteInputCostMutationOptions(options));
 };
+
+/**
+ * @summary List historical risk alerts for a farm profile
+ */
+export const getGetFarmRiskHistoryUrl = (
+  id: number,
+  params?: GetFarmRiskHistoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/agriculture/farm-profiles/${id}/risk-history?${stringifiedParams}`
+    : `/api/agriculture/farm-profiles/${id}/risk-history`;
+};
+
+export const getFarmRiskHistory = async (
+  id: number,
+  params?: GetFarmRiskHistoryParams,
+  options?: RequestInit,
+): Promise<Alert[]> => {
+  return customFetch<Alert[]>(getGetFarmRiskHistoryUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFarmRiskHistoryQueryKey = (
+  id: number,
+  params?: GetFarmRiskHistoryParams,
+) => {
+  return [
+    `/api/agriculture/farm-profiles/${id}/risk-history`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetFarmRiskHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFarmRiskHistory>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetFarmRiskHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFarmRiskHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetFarmRiskHistoryQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFarmRiskHistory>>
+  > = ({ signal }) =>
+    getFarmRiskHistory(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFarmRiskHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFarmRiskHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFarmRiskHistory>>
+>;
+export type GetFarmRiskHistoryQueryError = ErrorType<void>;
+
+/**
+ * @summary List historical risk alerts for a farm profile
+ */
+
+export function useGetFarmRiskHistory<
+  TData = Awaited<ReturnType<typeof getFarmRiskHistory>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetFarmRiskHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFarmRiskHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFarmRiskHistoryQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get crop-specific weather insights for a farm profile
