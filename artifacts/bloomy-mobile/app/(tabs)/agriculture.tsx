@@ -170,6 +170,56 @@ function SprayBadge({ window: w }: { window: SprayWindowEntry }) {
   );
 }
 
+// ─── Weather summary chip ─────────────────────────────────────────────────────
+
+interface WeatherInfo {
+  tempHigh: number;
+  precipChance: number;
+}
+
+function weatherChipColor(tempHigh: number, precipChance: number): string {
+  if (precipChance >= 60) return "#2A6DB8"; // rainy — blue
+  if (tempHigh >= 95)    return "#B85A1A"; // heat stress — amber-red
+  return "#5A7A5A";                         // neutral — muted green-grey
+}
+
+function WeatherChip({ info }: { info: WeatherInfo }) {
+  const colors = useColors();
+  const color = weatherChipColor(info.tempHigh, info.precipChance);
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        backgroundColor: colors.muted,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <Ionicons name="thermometer-outline" size={12} color={color} />
+      <Text style={{ fontSize: 12, fontFamily: "Outfit_600SemiBold", color }}>
+        {Math.round(info.tempHigh)}°F
+      </Text>
+      <View style={{ width: 1, height: 10, backgroundColor: colors.border }} />
+      <Ionicons name="water-outline" size={12} color={colors.mutedForeground} />
+      <Text
+        style={{
+          fontSize: 12,
+          fontFamily: "Outfit_500Medium",
+          color: colors.mutedForeground,
+        }}
+      >
+        {info.precipChance}%
+      </Text>
+    </View>
+  );
+}
+
 // ─── Growth stage badge ───────────────────────────────────────────────────────
 
 interface StageInfo {
@@ -232,10 +282,11 @@ interface FarmCardProps {
   soilScore?: SoilHealthResult | null;
   sprayWindow?: SprayWindowEntry | null;
   stageInfo?: StageInfo | null;
+  weatherInfo?: WeatherInfo | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -279,8 +330,9 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageIn
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo) && (
         <View style={s(colors).cardMeta}>
+          {weatherInfo && <WeatherChip info={weatherInfo} />}
           {item.acreage && (
             <View style={s(colors).metaChip}>
               <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
@@ -426,6 +478,24 @@ export default function AgricultureScreen() {
           precipitationForecast: cached.precipitationForecast ?? 0,
           droughtRiskLevel: cached.droughtRisk?.level ?? "none",
         });
+      } else {
+        map[p.id] = null;
+      }
+    });
+    return map;
+  }, [profiles, queryClient]);
+
+  // Read today's high temp and precipitation chance from cached insights.
+  // temperatureDaily[0] and precipitationDaily[0] both represent today.
+  const weatherMap = React.useMemo(() => {
+    const map: Record<number, WeatherInfo | null> = {};
+    profiles?.forEach((p) => {
+      const key = getGetAgricultureInsightsQueryKey(p.id);
+      const cached = queryClient.getQueryData<AgricultureInsights>(key);
+      const tempHigh = cached?.temperatureDaily?.[0]?.tempMax;
+      const precipChance = cached?.precipitationDaily?.[0]?.precipitationProbability;
+      if (tempHigh != null && precipChance != null) {
+        map[p.id] = { tempHigh, precipChance };
       } else {
         map[p.id] = null;
       }
@@ -581,6 +651,7 @@ export default function AgricultureScreen() {
             soilScore={soilScores[item.id]}
             sprayWindow={sprayWindowMap[item.id] ?? null}
             stageInfo={stageMap[item.id] ?? null}
+            weatherInfo={weatherMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}
