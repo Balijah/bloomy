@@ -66,8 +66,13 @@ export default function RiskHistoryCard({ history, isLoading }: RiskHistoryCardP
   const s = styles(colors);
   const [expanded, setExpanded] = useState(false);
 
-  const RISK_TYPES = ["frost", "heat_stress", "drought", "harvest_disruption"];
-  const riskHistory = history.filter((a) => RISK_TYPES.includes(a.type));
+  const riskHistory = history.filter(
+    (a) =>
+      a.type === "frost" ||
+      a.type === "heat_stress" ||
+      a.type === "drought" ||
+      a.type === "harvest_disruption"
+  );
 
   const visible = expanded ? riskHistory : riskHistory.slice(0, INITIAL_VISIBLE);
   const hasMore = riskHistory.length > INITIAL_VISIBLE;
