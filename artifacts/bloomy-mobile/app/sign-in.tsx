@@ -83,17 +83,27 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       await signUp.create({ emailAddress: email, password, firstName: firstName || undefined });
-      const nextStep = signUp.status;
-      if (nextStep === "complete" && signUp.createdSessionId) {
+      const emailStep = signUp.verifications.emailAddress;
+      const strategy = emailStep?.strategy;
+      if (strategy === "email_code") {
+        setMode("verify");
+        return;
+      }
+      if (signUp.status === "complete" && signUp.createdSessionId) {
         await setSignUpActive({ session: signUp.createdSessionId });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.replace("/(tabs)/");
         return;
       }
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setMode("verify");
+      setError("Sign up is waiting on email verification.");
     } catch (e: any) {
-      setError(e?.errors?.[0]?.longMessage ?? "Sign up failed.");
+      const nextStep = e?.errors?.[0]?.meta?.verificationStrategy;
+      if (nextStep === "email_code" || e?.errors?.[0]?.code === "form_code") {
+        setMode("verify");
+        setError("Check your email for the verification code.");
+      } else {
+        setError(e?.errors?.[0]?.longMessage ?? "Sign up failed.");
+      }
     } finally {
       setLoading(false);
     }
