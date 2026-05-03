@@ -14,6 +14,10 @@ import {
   getGetInputCostsQueryKey,
   getGetYieldRecordsQueryKey,
 } from "@workspace/api-client-react";
+import type {
+  AgricultureInsightsDailyTemp,
+  AgricultureInsightsDailyPrecip,
+} from "@workspace/api-client-react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -150,6 +154,193 @@ const rc = (colors: ReturnType<typeof useColors>) =>
       lineHeight: 19,
     },
   });
+
+// ─── 7-day risk timeline ──────────────────────────────────────────────────────
+
+type DayRisk = "critical" | "high" | "moderate" | null;
+
+function frostDayRisk(tempMin: number | undefined | null): DayRisk {
+  if (tempMin == null) return null;
+  if (tempMin < 28) return "critical";
+  if (tempMin < 32) return "high";
+  if (tempMin < 36) return "moderate";
+  return null;
+}
+
+function heatDayRisk(tempMax: number | undefined | null): DayRisk {
+  if (tempMax == null) return null;
+  if (tempMax > 108) return "critical";
+  if (tempMax > 100) return "high";
+  if (tempMax > 90)  return "moderate";
+  return null;
+}
+
+function droughtDayRisk(precipChance: number | undefined | null): DayRisk {
+  if (precipChance == null) return null;
+  if (precipChance < 5)  return "critical";
+  if (precipChance < 15) return "high";
+  if (precipChance < 25) return "moderate";
+  return null;
+}
+
+const RISK_DOT_PALETTE: Record<string, Record<string, string>> = {
+  frost:   { moderate: "#3B7DD8", high: "#1A4E9A", critical: "#0D2B6B" },
+  heat:    { moderate: "#E06020", high: "#C03010", critical: "#8B1A00" },
+  drought: { moderate: "#D08020", high: "#B84010", critical: "#8B2000" },
+};
+
+function RiskTimelineRow({
+  icon,
+  label,
+  palette,
+  signals,
+}: {
+  icon: string;
+  label: string;
+  palette: Record<string, string>;
+  signals: DayRisk[];
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", width: 72, gap: 4 }}>
+        <Ionicons name={icon as any} size={13} color={palette.moderate} />
+        <Text
+          style={{
+            fontSize: 11,
+            fontFamily: "Outfit_600SemiBold",
+            color: palette.moderate,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
+      <View style={{ flex: 1, flexDirection: "row" }}>
+        {signals.map((sig, i) => {
+          const dotColor = sig ? palette[sig] : null;
+          return (
+            <View key={i} style={{ flex: 1, alignItems: "center" }}>
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: dotColor ? dotColor + "D0" : "#00000012",
+                }}
+              />
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function RiskTimeline7Day({
+  temperatureDaily,
+  precipitationDaily,
+  showFrost,
+  showHeat,
+  showDrought,
+}: {
+  temperatureDaily: AgricultureInsightsDailyTemp[];
+  precipitationDaily: AgricultureInsightsDailyPrecip[];
+  showFrost: boolean;
+  showHeat: boolean;
+  showDrought: boolean;
+}) {
+  const days = temperatureDaily.slice(0, 7).map((td, i) => {
+    const precip = precipitationDaily[i];
+    const d = new Date(td.date + "T12:00:00");
+    const dayLabel =
+      i === 0
+        ? "Today"
+        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+    return {
+      dayLabel,
+      dateLabel,
+      frost:   frostDayRisk(td.tempMin),
+      heat:    heatDayRisk(td.tempMax),
+      drought: droughtDayRisk(precip?.precipitationProbability),
+    };
+  });
+
+  return (
+    <View
+      style={{
+        backgroundColor: "#00000006",
+        borderWidth: 1,
+        borderColor: "#00000010",
+        borderRadius: 12,
+        padding: 12,
+        marginTop: 4,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 12,
+          fontFamily: "Outfit_600SemiBold",
+          color: "#888",
+          marginBottom: 10,
+        }}
+      >
+        7-Day Risk Forecast
+      </Text>
+
+      {showFrost && (
+        <RiskTimelineRow
+          icon="snow-outline"
+          label="Frost"
+          palette={RISK_DOT_PALETTE.frost}
+          signals={days.map((d) => d.frost)}
+        />
+      )}
+      {showHeat && (
+        <RiskTimelineRow
+          icon="thermometer-outline"
+          label="Heat"
+          palette={RISK_DOT_PALETTE.heat}
+          signals={days.map((d) => d.heat)}
+        />
+      )}
+      {showDrought && (
+        <RiskTimelineRow
+          icon="warning-outline"
+          label="Drought"
+          palette={RISK_DOT_PALETTE.drought}
+          signals={days.map((d) => d.drought)}
+        />
+      )}
+
+      {/* Day labels */}
+      <View style={{ flexDirection: "row", marginTop: 4 }}>
+        <View style={{ width: 72 }} />
+        {days.map((day, i) => (
+          <View key={i} style={{ flex: 1, alignItems: "center" }}>
+            <Text
+              style={{
+                fontSize: 10,
+                fontFamily: "Outfit_500Medium",
+                color: "#999",
+              }}
+            >
+              {day.dayLabel.substring(0, 3)}
+            </Text>
+            <Text
+              style={{
+                fontSize: 9,
+                fontFamily: "Outfit_400Regular",
+                color: "#BBB",
+              }}
+            >
+              {day.dateLabel}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function AgricultureDetailScreen() {
   const colors = useColors();
@@ -522,6 +713,15 @@ export default function AgricultureDetailScreen() {
                     icon={icon}
                   />
                 ))}
+                {insights.temperatureDaily && insights.temperatureDaily.length > 0 && (
+                  <RiskTimeline7Day
+                    temperatureDaily={insights.temperatureDaily}
+                    precipitationDaily={insights.precipitationDaily ?? []}
+                    showFrost={active.some((a) => a.title === "Frost Risk")}
+                    showHeat={active.some((a) => a.title === "Heat Stress")}
+                    showDrought={active.some((a) => a.title === "Drought Risk")}
+                  />
+                )}
               </View>
             )}
           </View>
