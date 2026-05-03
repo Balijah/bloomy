@@ -88,8 +88,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const clerkPublishableKey =
-  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY ?? "";
+const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 
 // Keeps the stored Clerk token fresh for the background task (refreshed every 45 s)
 function AuthTokenBridge() {
