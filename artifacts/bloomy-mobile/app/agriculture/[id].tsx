@@ -42,6 +42,7 @@ import IrrigationCard from "@/components/IrrigationCard";
 import ScoutingLogCard from "@/components/ScoutingLogCard";
 import DiseaseRiskCard from "@/components/DiseaseRiskCard";
 import PlantingDateCard from "@/components/PlantingDateCard";
+import YieldGoalCard from "@/components/YieldGoalCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -444,6 +445,12 @@ export default function AgricultureDetailScreen() {
           accumulatedGDD={insights.accumulatedGDD}
           farmId={farmId}
         />
+      </View>
+
+      {/* Yield Goal */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Yield Goal</Text>
+        <YieldGoalCard profile={profile} insights={insights} />
       </View>
 
       {/* Yield Forecast */}

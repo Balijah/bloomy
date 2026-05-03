@@ -24,7 +24,7 @@ export interface YieldProfile {
   unitLong: string;
 }
 
-const YIELD_PROFILES: Record<string, YieldProfile> = {
+export const YIELD_PROFILES_PUBLIC: Record<string, YieldProfile> = {
   corn: {
     low: 140, avg: 175, high: 220,
     unit: "bu/acre", unitLong: "bushels per acre",
@@ -66,6 +66,8 @@ const YIELD_PROFILES: Record<string, YieldProfile> = {
     unit: "% of avg", unitLong: "percent of regional average",
   },
 };
+
+const YIELD_PROFILES = YIELD_PROFILES_PUBLIC;
 
 // ── Stage confidence ──────────────────────────────────────────────────────────
 // How many stages does this crop have before "fill" and "maturity"?

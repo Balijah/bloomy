@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import DatePickerField from "@/components/DatePickerField";
+import { YIELD_PROFILES_PUBLIC } from "@/lib/yieldForecast";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export default function EditFarmScreen() {
   const [name, setName] = useState("");
   const [cropType, setCropType] = useState<string | null>(null);
   const [acreage, setAcreage] = useState("");
+  const [yieldGoal, setYieldGoal] = useState("");
   const [soilType, setSoilType] = useState("");
   const [plantingDate, setPlantingDate] = useState("");
   const [harvestDate, setHarvestDate] = useState("");
@@ -137,6 +139,7 @@ export default function EditFarmScreen() {
       setName(profile.name ?? "");
       setCropType(profile.cropType ?? null);
       setAcreage(profile.acreage != null ? String(profile.acreage) : "");
+      setYieldGoal(profile.yieldGoal != null ? String(profile.yieldGoal) : "");
       setSoilType(profile.soilType ?? "");
       setPlantingDate(profile.plantingDate ?? "");
       setHarvestDate(profile.harvestDate ?? "");
@@ -155,6 +158,7 @@ export default function EditFarmScreen() {
     (name !== (profile.name ?? "") ||
       cropType !== (profile.cropType ?? null) ||
       acreage !== (profile.acreage != null ? String(profile.acreage) : "") ||
+      yieldGoal !== (profile.yieldGoal != null ? String(profile.yieldGoal) : "") ||
       soilType !== (profile.soilType ?? "") ||
       plantingDate !== (profile.plantingDate ?? "") ||
       harvestDate !== (profile.harvestDate ?? "") ||
@@ -171,6 +175,7 @@ export default function EditFarmScreen() {
           name: name.trim(),
           cropType: cropType as any,
           acreage: acreage ? parseFloat(acreage) : null,
+          yieldGoal: yieldGoal ? parseFloat(yieldGoal) : null,
           soilType: soilType.trim() || null,
           plantingDate: plantingDate.trim() || null,
           harvestDate: harvestDate.trim() || null,
@@ -402,6 +407,23 @@ export default function EditFarmScreen() {
             value={acreage}
             onChangeText={setAcreage}
             placeholder="e.g. 240"
+            keyboardType="decimal-pad"
+          />
+        </View>
+
+        {/* Yield goal */}
+        <View>
+          <FieldLabel
+            text={`Yield goal (optional)${cropType ? ` · ${YIELD_PROFILES_PUBLIC[cropType]?.unit ?? "bu/acre"}` : ""}`}
+          />
+          <StyledInput
+            value={yieldGoal}
+            onChangeText={setYieldGoal}
+            placeholder={
+              cropType && YIELD_PROFILES_PUBLIC[cropType]
+                ? `e.g. ${YIELD_PROFILES_PUBLIC[cropType].avg}`
+                : "e.g. 175"
+            }
             keyboardType="decimal-pad"
           />
         </View>

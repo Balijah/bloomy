@@ -292,6 +292,11 @@ export interface FarmProfile {
   plantingDate?: string | null;
   /** @nullable */
   harvestDate?: string | null;
+  /**
+   * Farmer's self-set yield target in crop-appropriate units (bu/acre, lbs/acre, etc.)
+   * @nullable
+   */
+  yieldGoal?: number | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -325,6 +330,11 @@ export interface CreateFarmProfileBody {
   plantingDate?: string | null;
   /** @nullable */
   harvestDate?: string | null;
+  /**
+   * Farmer's self-set yield target in crop-appropriate units
+   * @nullable
+   */
+  yieldGoal?: number | null;
   /** @nullable */
   notes?: string | null;
 }
@@ -356,6 +366,11 @@ export interface UpdateFarmProfileBody {
   plantingDate?: string | null;
   /** @nullable */
   harvestDate?: string | null;
+  /**
+   * Farmer's self-set yield target in crop-appropriate units
+   * @nullable
+   */
+  yieldGoal?: number | null;
   /** @nullable */
   notes?: string | null;
 }

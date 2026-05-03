@@ -1126,6 +1126,9 @@ components:
         harvestDate:
           type: ["string", "null"]
           format: date
+        yieldGoal:
+          type: ["number", "null"]
+          description: Farmer's self-set yield target in crop-appropriate units (bu/acre, lbs/acre, etc.)
         notes:
           type: ["string", "null"]
         createdAt:
@@ -1159,6 +1162,9 @@ components:
         harvestDate:
           type: ["string", "null"]
           format: date
+        yieldGoal:
+          type: ["number", "null"]
+          description: Farmer's self-set yield target in crop-appropriate units
         notes:
           type: ["string", "null"]
       required:
@@ -1184,6 +1190,9 @@ components:
         harvestDate:
           type: ["string", "null"]
           format: date
+        yieldGoal:
+          type: ["number", "null"]
+          description: Farmer's self-set yield target in crop-appropriate units
         notes:
           type: ["string", "null"]
 

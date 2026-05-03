@@ -230,6 +230,12 @@ export const GetFarmProfilesResponseItem = zod.object({
   soilType: zod.string().nullish(),
   plantingDate: zod.coerce.date().nullish(),
   harvestDate: zod.coerce.date().nullish(),
+  yieldGoal: zod
+    .number()
+    .nullish()
+    .describe(
+      "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -257,6 +263,10 @@ export const CreateFarmProfileBody = zod.object({
   soilType: zod.string().nullish(),
   plantingDate: zod.coerce.date().nullish(),
   harvestDate: zod.coerce.date().nullish(),
+  yieldGoal: zod
+    .number()
+    .nullish()
+    .describe("Farmer's self-set yield target in crop-appropriate units"),
   notes: zod.string().nullish(),
 });
 
@@ -288,6 +298,12 @@ export const GetFarmProfileResponse = zod.object({
   soilType: zod.string().nullish(),
   plantingDate: zod.coerce.date().nullish(),
   harvestDate: zod.coerce.date().nullish(),
+  yieldGoal: zod
+    .number()
+    .nullish()
+    .describe(
+      "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -319,6 +335,10 @@ export const UpdateFarmProfileBody = zod.object({
   soilType: zod.string().nullish(),
   plantingDate: zod.coerce.date().nullish(),
   harvestDate: zod.coerce.date().nullish(),
+  yieldGoal: zod
+    .number()
+    .nullish()
+    .describe("Farmer's self-set yield target in crop-appropriate units"),
   notes: zod.string().nullish(),
 });
 
@@ -343,6 +363,12 @@ export const UpdateFarmProfileResponse = zod.object({
   soilType: zod.string().nullish(),
   plantingDate: zod.coerce.date().nullish(),
   harvestDate: zod.coerce.date().nullish(),
+  yieldGoal: zod
+    .number()
+    .nullish()
+    .describe(
+      "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
