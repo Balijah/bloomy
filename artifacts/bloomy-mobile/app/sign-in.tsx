@@ -35,6 +35,7 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const isLoaded = signInLoaded && signUpLoaded;
+  const canSubmit = isLoaded && !loading && email.trim().length > 0 && password.length > 0;
 
   async function handleSignIn() {
     if (!signIn || !isLoaded) return;
@@ -119,6 +120,7 @@ export default function SignInScreen() {
               <Text style={s.verifyHint}>
                 Enter the 6-digit code sent to {email}
               </Text>
+              {!isLoaded ? <Text style={s.helper}>Loading auth…</Text> : null}
               <TextInput
                 style={s.input}
                 placeholder="Verification code"
@@ -134,7 +136,7 @@ export default function SignInScreen() {
               <Pressable
                 style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
                 onPress={handleVerify}
-                disabled={loading}
+                disabled={loading || !isLoaded}
                 testID="button-verify"
               >
                 {loading ? (
@@ -199,10 +201,11 @@ export default function SignInScreen() {
                 </Pressable>
               </View>
               {error ? <Text style={s.error}>{error}</Text> : null}
+              {!isLoaded ? <Text style={s.helper}>Loading auth…</Text> : null}
               <Pressable
                 style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
                 onPress={mode === "sign-in" ? handleSignIn : handleSignUp}
-                disabled={loading || !isLoaded}
+                disabled={!canSubmit}
                 testID="button-submit"
               >
                 {loading ? (
@@ -304,6 +307,13 @@ const styles = (colors: ReturnType<typeof useColors>, insets: ReturnType<typeof 
       fontSize: 13,
       fontFamily: "Outfit_400Regular",
       color: colors.destructive,
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    helper: {
+      fontSize: 13,
+      fontFamily: "Outfit_500Medium",
+      color: colors.mutedForeground,
       marginBottom: 12,
       textAlign: "center",
     },
