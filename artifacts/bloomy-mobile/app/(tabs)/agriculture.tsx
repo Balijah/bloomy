@@ -5,13 +5,14 @@ import {
   useGetSprayWindowAlerts,
   getGetFarmProfilesQueryKey,
   getGetAgricultureInsightsQueryKey,
+  getGetAgricultureInsightsQueryOptions,
   type AgricultureInsights,
   type SprayWindowEntry,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -428,6 +429,23 @@ export default function AgricultureScreen() {
     });
     return map;
   }, [profiles, queryClient]);
+
+  // Eagerly prefetch agriculture insights for every farm as soon as the profile
+  // list is available. prefetchQuery is a no-op for any farm whose cache is
+  // still fresh (staleTime 5 min), so revisiting the tab is cheap.
+  const prefetchInsights = useCallback(() => {
+    if (!profiles?.length) return;
+    profiles.forEach((p) => {
+      queryClient.prefetchQuery({
+        ...getGetAgricultureInsightsQueryOptions(p.id),
+        staleTime: 5 * 60 * 1000,
+      });
+    });
+  }, [profiles, queryClient]);
+
+  useEffect(() => {
+    prefetchInsights();
+  }, [prefetchInsights]);
 
   function handleDelete(id: number, name: string) {
     Alert.alert(
