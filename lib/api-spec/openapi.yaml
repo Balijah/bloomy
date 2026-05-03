@@ -1132,6 +1132,9 @@ components:
         cropPrice:
           type: ["number", "null"]
           description: Expected sale price per unit (e.g. $/bu, $/lb) used for revenue projection
+        costPerAcre:
+          type: ["number", "null"]
+          description: Estimated total production cost per acre (seed, fertilizer, labor, etc.)
         notes:
           type: ["string", "null"]
         createdAt:
@@ -1171,6 +1174,9 @@ components:
         cropPrice:
           type: ["number", "null"]
           description: Expected sale price per unit used for revenue projection
+        costPerAcre:
+          type: ["number", "null"]
+          description: Estimated total production cost per acre
         notes:
           type: ["string", "null"]
       required:
@@ -1202,6 +1208,9 @@ components:
         cropPrice:
           type: ["number", "null"]
           description: Expected sale price per unit used for revenue projection
+        costPerAcre:
+          type: ["number", "null"]
+          description: Estimated total production cost per acre
         notes:
           type: ["string", "null"]
 

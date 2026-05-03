@@ -15,7 +15,13 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { AgricultureInsights, FarmProfile } from "@workspace/api-client-react";
-import { computeYieldGoal, type GoalStatus, type RevenueProjection } from "@/lib/yieldGoal";
+import {
+  computeYieldGoal,
+  type GoalStatus,
+  type RevenueProjection,
+  type BreakevenAnalysis,
+  type BreakevenStatus,
+} from "@/lib/yieldGoal";
 import { useColors } from "@/hooks/useColors";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -242,6 +248,211 @@ const pr = StyleSheet.create({
   unit: { fontSize: 12, fontFamily: "Outfit_400Regular" },
 });
 
+// ── Breakeven section component ───────────────────────────────────────────────
+
+const BREAKEVEN_ICON: Record<BreakevenStatus, string> = {
+  profitable:   "shield-checkmark",
+  tight:        "shield-half",
+  at_risk:      "warning",
+  unprofitable: "alert-circle",
+};
+
+function BreakevenSection({
+  breakeven,
+  unit,
+  goalValue,
+  acreage,
+}: {
+  breakeven: BreakevenAnalysis;
+  unit: string;
+  goalValue: number | null;
+  acreage: number | null | undefined;
+}) {
+  const colors = useColors();
+  const {
+    breakevenYield,
+    totalFarmCost,
+    safetyMarginPct,
+    coverageRatioPct,
+    projectedProfitMid,
+    projectedProfitLow,
+    projectedProfitHigh,
+    profitAtGoal,
+    status,
+    statusColor,
+    statusLabel,
+    statusDetail,
+    priceUnit,
+  } = breakeven;
+
+  const iconName = BREAKEVEN_ICON[status] as any;
+  const isPositiveMid = projectedProfitMid != null && projectedProfitMid >= 0;
+  const isPositiveLow = projectedProfitLow != null && projectedProfitLow >= 0;
+  const isPositiveHigh = projectedProfitHigh != null && projectedProfitHigh >= 0;
+
+  function profitColor(val: number | null) {
+    if (val == null) return colors.foreground;
+    return val >= 0 ? "#2D9B5A" : "#D02020";
+  }
+
+  function formatProfit(val: number | null) {
+    if (val == null) return "—";
+    return `${val >= 0 ? "+" : ""}$${Math.abs(val).toLocaleString()}`;
+  }
+
+  return (
+    <>
+      <View style={[s.divider, { backgroundColor: colors.border }]} />
+      <View style={s.section}>
+        {/* Header row */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
+            Breakeven Analysis
+          </Text>
+          <View style={[bk.badge, { backgroundColor: statusColor + "18" }]}>
+            <Ionicons name={iconName} size={12} color={statusColor} />
+            <Text style={[bk.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
+        </View>
+
+        {/* Status detail */}
+        <View style={[bk.detailBox, { backgroundColor: statusColor + "0F", borderColor: statusColor + "28" }]}>
+          <View style={[bk.detailBar, { backgroundColor: statusColor }]} />
+          <Text style={[bk.detailText, { color: colors.foreground }]}>{statusDetail}</Text>
+        </View>
+
+        {/* Key metrics grid */}
+        <View style={bk.grid}>
+          {/* Breakeven yield */}
+          <View style={[bk.cell, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={[bk.cellLabel, { color: colors.mutedForeground }]}>Breakeven yield</Text>
+            <Text style={[bk.cellValue, { color: colors.foreground }]}>
+              {breakevenYield}
+            </Text>
+            <Text style={[bk.cellUnit, { color: colors.mutedForeground }]}>{unit}</Text>
+          </View>
+
+          {/* Coverage ratio */}
+          <View style={[bk.cell, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={[bk.cellLabel, { color: colors.mutedForeground }]}>Cost coverage</Text>
+            <Text style={[bk.cellValue, { color: statusColor }]}>
+              {coverageRatioPct}%
+            </Text>
+            <Text style={[bk.cellUnit, { color: colors.mutedForeground }]}>of costs</Text>
+          </View>
+
+          {/* Safety margin */}
+          <View style={[bk.cell, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={[bk.cellLabel, { color: colors.mutedForeground }]}>Safety margin</Text>
+            <Text style={[bk.cellValue, { color: safetyMarginPct >= 0 ? "#2D9B5A" : "#D02020" }]}>
+              {safetyMarginPct >= 0 ? "+" : ""}{safetyMarginPct}%
+            </Text>
+            <Text style={[bk.cellUnit, { color: colors.mutedForeground }]}>above B/E</Text>
+          </View>
+        </View>
+
+        {/* Profit rows — only when acreage is known */}
+        {(projectedProfitMid != null || projectedProfitLow != null) && (
+          <View style={{ gap: 8 }}>
+            <Text style={[s.sectionLabel, { color: colors.mutedForeground, marginTop: 4 }]}>
+              Projected Net Profit
+              {acreage ? ` · ${acreage.toLocaleString()} acres` : ""}
+            </Text>
+
+            {projectedProfitLow != null && projectedProfitHigh != null && (
+              <View style={bk.profitRow}>
+                <Text style={[bk.profitLabel, { color: colors.mutedForeground }]}>Forecast range</Text>
+                <Text style={[bk.profitValue, { color: profitColor(projectedProfitLow) }]}>
+                  {formatProfit(projectedProfitLow)}{" "}
+                  <Text style={{ color: colors.mutedForeground }}>–</Text>{" "}
+                  <Text style={{ color: profitColor(projectedProfitHigh) }}>
+                    {formatProfit(projectedProfitHigh)}
+                  </Text>
+                </Text>
+              </View>
+            )}
+
+            {projectedProfitMid != null && (
+              <View style={bk.profitRow}>
+                <Text style={[bk.profitLabel, { color: colors.mutedForeground }]}>Midpoint estimate</Text>
+                <Text style={[bk.profitValue, { color: profitColor(projectedProfitMid) }]}>
+                  {formatProfit(projectedProfitMid)}
+                </Text>
+              </View>
+            )}
+
+            {profitAtGoal != null && goalValue != null && (
+              <View style={bk.profitRow}>
+                <Text style={[bk.profitLabel, { color: colors.mutedForeground }]}>
+                  At goal ({goalValue} {unit.split("/")[0]}/acre)
+                </Text>
+                <Text style={[bk.profitValue, { color: profitColor(profitAtGoal) }]}>
+                  {formatProfit(profitAtGoal)}
+                </Text>
+              </View>
+            )}
+
+            {totalFarmCost != null && (
+              <View style={bk.profitRow}>
+                <Text style={[bk.profitLabel, { color: colors.mutedForeground }]}>Total farm cost</Text>
+                <Text style={[bk.profitValue, { color: colors.foreground }]}>
+                  ${totalFarmCost.toLocaleString()}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
+const bk = StyleSheet.create({
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  badgeText: { fontSize: 11, fontFamily: "Outfit_600SemiBold" },
+  detailBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  detailBar: { width: 3, height: 30, borderRadius: 2, alignSelf: "stretch" },
+  detailText: { flex: 1, fontSize: 13, fontFamily: "Outfit_400Regular", lineHeight: 18 },
+  grid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  cell: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    gap: 2,
+  },
+  cellLabel: { fontSize: 10, fontFamily: "Outfit_500Medium", textAlign: "center" },
+  cellValue: { fontSize: 20, fontFamily: "Outfit_700Bold", lineHeight: 24 },
+  cellUnit: { fontSize: 9, fontFamily: "Outfit_400Regular", textAlign: "center" },
+  profitRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  profitLabel: { fontSize: 13, fontFamily: "Outfit_400Regular" },
+  profitValue: { fontSize: 14, fontFamily: "Outfit_700Bold" },
+});
+
 // ── Revenue gap styles ─────────────────────────────────────────────────────────
 
 const rv = StyleSheet.create({
@@ -355,6 +566,7 @@ export default function YieldGoalCard({ profile, insights }: Props) {
     goalValue: profile.yieldGoal,
     acreage: profile.acreage,
     cropPrice: profile.cropPrice,
+    costPerAcre: profile.costPerAcre,
   });
 
   const {
@@ -375,6 +587,7 @@ export default function YieldGoalCard({ profile, insights }: Props) {
     goalTotalProduction,
     projectedTotalProduction,
     revenue,
+    breakeven,
     insights: tipList,
   } = result;
 
@@ -621,6 +834,16 @@ export default function YieldGoalCard({ profile, insights }: Props) {
             )}
           </View>
         </>
+      )}
+
+      {/* ── Breakeven Analysis ──────────────────────────────────────────── */}
+      {breakeven != null && (
+        <BreakevenSection
+          breakeven={breakeven}
+          unit={unit}
+          goalValue={goalValue}
+          acreage={profile.acreage}
+        />
       )}
 
       {/* ── Insights ────────────────────────────────────────────────────── */}

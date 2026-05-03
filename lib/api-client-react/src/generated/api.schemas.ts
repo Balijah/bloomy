@@ -302,6 +302,11 @@ export interface FarmProfile {
    * @nullable
    */
   cropPrice?: number | null;
+  /**
+   * Estimated total production cost per acre (seed, fertilizer, labor, etc.)
+   * @nullable
+   */
+  costPerAcre?: number | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -345,6 +350,11 @@ export interface CreateFarmProfileBody {
    * @nullable
    */
   cropPrice?: number | null;
+  /**
+   * Estimated total production cost per acre
+   * @nullable
+   */
+  costPerAcre?: number | null;
   /** @nullable */
   notes?: string | null;
 }
@@ -386,6 +396,11 @@ export interface UpdateFarmProfileBody {
    * @nullable
    */
   cropPrice?: number | null;
+  /**
+   * Estimated total production cost per acre
+   * @nullable
+   */
+  costPerAcre?: number | null;
   /** @nullable */
   notes?: string | null;
 }

@@ -242,6 +242,12 @@ export const GetFarmProfilesResponseItem = zod.object({
     .describe(
       "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
     ),
+  costPerAcre: zod
+    .number()
+    .nullish()
+    .describe(
+      "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -277,6 +283,10 @@ export const CreateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Expected sale price per unit used for revenue projection"),
+  costPerAcre: zod
+    .number()
+    .nullish()
+    .describe("Estimated total production cost per acre"),
   notes: zod.string().nullish(),
 });
 
@@ -320,6 +330,12 @@ export const GetFarmProfileResponse = zod.object({
     .describe(
       "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
     ),
+  costPerAcre: zod
+    .number()
+    .nullish()
+    .describe(
+      "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -359,6 +375,10 @@ export const UpdateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Expected sale price per unit used for revenue projection"),
+  costPerAcre: zod
+    .number()
+    .nullish()
+    .describe("Estimated total production cost per acre"),
   notes: zod.string().nullish(),
 });
 
@@ -394,6 +414,12 @@ export const UpdateFarmProfileResponse = zod.object({
     .nullish()
     .describe(
       "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
+    ),
+  costPerAcre: zod
+    .number()
+    .nullish()
+    .describe(
+      "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
     ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),

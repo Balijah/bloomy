@@ -25,7 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import DatePickerField from "@/components/DatePickerField";
 import { YIELD_PROFILES_PUBLIC } from "@/lib/yieldForecast";
-import { CROP_MARKET_PRICES } from "@/lib/yieldGoal";
+import { CROP_MARKET_PRICES, CROP_COST_HINTS } from "@/lib/yieldGoal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -129,6 +129,7 @@ export default function EditFarmScreen() {
   const [acreage, setAcreage] = useState("");
   const [yieldGoal, setYieldGoal] = useState("");
   const [cropPrice, setCropPrice] = useState("");
+  const [costPerAcre, setCostPerAcre] = useState("");
   const [soilType, setSoilType] = useState("");
   const [plantingDate, setPlantingDate] = useState("");
   const [harvestDate, setHarvestDate] = useState("");
@@ -143,6 +144,7 @@ export default function EditFarmScreen() {
       setAcreage(profile.acreage != null ? String(profile.acreage) : "");
       setYieldGoal(profile.yieldGoal != null ? String(profile.yieldGoal) : "");
       setCropPrice(profile.cropPrice != null ? String(profile.cropPrice) : "");
+      setCostPerAcre(profile.costPerAcre != null ? String(profile.costPerAcre) : "");
       setSoilType(profile.soilType ?? "");
       setPlantingDate(profile.plantingDate ?? "");
       setHarvestDate(profile.harvestDate ?? "");
@@ -163,6 +165,7 @@ export default function EditFarmScreen() {
       acreage !== (profile.acreage != null ? String(profile.acreage) : "") ||
       yieldGoal !== (profile.yieldGoal != null ? String(profile.yieldGoal) : "") ||
       cropPrice !== (profile.cropPrice != null ? String(profile.cropPrice) : "") ||
+      costPerAcre !== (profile.costPerAcre != null ? String(profile.costPerAcre) : "") ||
       soilType !== (profile.soilType ?? "") ||
       plantingDate !== (profile.plantingDate ?? "") ||
       harvestDate !== (profile.harvestDate ?? "") ||
@@ -181,6 +184,7 @@ export default function EditFarmScreen() {
           acreage: acreage ? parseFloat(acreage) : null,
           yieldGoal: yieldGoal ? parseFloat(yieldGoal) : null,
           cropPrice: cropPrice ? parseFloat(cropPrice) : null,
+          costPerAcre: costPerAcre ? parseFloat(costPerAcre) : null,
           soilType: soilType.trim() || null,
           plantingDate: plantingDate.trim() || null,
           harvestDate: harvestDate.trim() || null,
@@ -449,6 +453,21 @@ export default function EditFarmScreen() {
               cropType && CROP_MARKET_PRICES[cropType]
                 ? `e.g. ${CROP_MARKET_PRICES[cropType].price} (${CROP_MARKET_PRICES[cropType].label})`
                 : "e.g. 4.50"
+            }
+            keyboardType="decimal-pad"
+          />
+        </View>
+
+        {/* Cost per acre */}
+        <View>
+          <FieldLabel text="Production cost/acre (optional) · $/acre" />
+          <StyledInput
+            value={costPerAcre}
+            onChangeText={setCostPerAcre}
+            placeholder={
+              cropType && CROP_COST_HINTS[cropType]
+                ? `e.g. ${CROP_COST_HINTS[cropType].cost} (${CROP_COST_HINTS[cropType].label})`
+                : "e.g. 850"
             }
             keyboardType="decimal-pad"
           />
