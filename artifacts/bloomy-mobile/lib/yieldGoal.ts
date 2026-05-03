@@ -3,6 +3,7 @@
  *
  * Compares a farmer's self-set yield goal (bu/acre, lbs/acre, etc.) against
  * the season's weather-adjusted forecast range from computeYieldForecast().
+ * When a crop price is provided it also projects gross revenue.
  *
  * All inputs are already loaded in the farm detail screen — no extra API calls.
  */
@@ -15,6 +16,22 @@ import {
 import { getCurrentStage } from "@/lib/cropStages";
 import type { AgricultureInsights } from "@workspace/api-client-react";
 
+// ── Reference market prices (US, approximate) ─────────────────────────────────
+// Used as placeholder hints in the edit form; farmers override with their
+// actual contract or futures price.
+
+export const CROP_MARKET_PRICES: Record<string, { price: number; label: string }> = {
+  corn:         { price: 4.50,   label: "≈ $4.50/bu (CBOT futures)" },
+  soybeans:     { price: 12.00,  label: "≈ $12.00/bu (CBOT futures)" },
+  winter_wheat: { price: 6.50,   label: "≈ $6.50/bu (CBOT futures)" },
+  cotton:       { price: 0.85,   label: "≈ $0.85/lb (ICE futures)" },
+  potatoes:     { price: 8.50,   label: "≈ $8.50/cwt (USDA avg)" },
+  grapes:       { price: 800,    label: "≈ $800/ton (USDA NASS)" },
+  almonds:      { price: 2.50,   label: "≈ $2.50/lb (Blue Diamond avg)" },
+  apples:       { price: 350,    label: "≈ $350/ton (USDA NASS)" },
+  rice:         { price: 14.00,  label: "≈ $14.00/bu (USDA avg)" },
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type GoalStatus =
@@ -22,6 +39,23 @@ export type GoalStatus =
   | "on_track"      // forecast mid >= 90 % of goal
   | "at_risk"       // forecast low >= 75 % of goal
   | "below_goal";   // below 75 % of goal
+
+export interface RevenueProjection {
+  /** Price per unit ($/bu, $/lb, $/ton, $/cwt) */
+  pricePerUnit: number;
+  /** Short label for the price denominator, e.g. "/bu" */
+  priceUnit: string;
+  /** Goal revenue = goalTotalProduction × price (null if no goal or no acreage) */
+  goalRevenue: number | null;
+  /** Projected revenue at midpoint forecast (null if no acreage) */
+  projectedRevenueMid: number | null;
+  /** Projected revenue at low-end forecast (null if no acreage) */
+  projectedRevenueLow: number | null;
+  /** Projected revenue at high-end forecast (null if no acreage) */
+  projectedRevenueHigh: number | null;
+  /** goalRevenue - projectedRevenueMid (negative = ahead of goal revenue) */
+  revenueGap: number | null;
+}
 
 export interface YieldGoalResult {
   hasGoal: boolean;
@@ -45,6 +79,8 @@ export interface YieldGoalResult {
   goalTotalProduction: number | null;
   /** Projected mid total production (projectedMid × acreage) */
   projectedTotalProduction: number | null;
+  /** Revenue projection; null if no cropPrice set */
+  revenue: RevenueProjection | null;
   /** Actionable bullets shown below the comparison */
   insights: string[];
 }
@@ -68,8 +104,7 @@ const STATUS_META: Record<
   at_risk: {
     color: "#E8A020",
     label: "At risk",
-    detail:
-      "Season stress could push yields below your target. Take action now.",
+    detail: "Season stress could push yields below your target. Take action now.",
   },
   below_goal: {
     color: "#D02020",
@@ -87,6 +122,70 @@ function getStatus(
   if (projectedMid >= goalValue * 0.9) return "on_track";
   if (projectedMid >= goalValue * 0.75) return "at_risk";
   return "below_goal";
+}
+
+// ── Revenue helpers ───────────────────────────────────────────────────────────
+
+/** Extract the short unit name from a yield-profile unit string, e.g. "bu/acre" → "bu" */
+function priceUnitFrom(profileUnit: string): string {
+  return profileUnit.split("/")[0].trim();
+}
+
+function buildRevenue(params: {
+  cropPrice: number;
+  profileUnit: string;
+  goalTotalProduction: number | null;
+  projectedTotalProduction: number | null;
+  projectedLow: number;
+  projectedHigh: number;
+  acreage: number | null | undefined;
+}): RevenueProjection {
+  const {
+    cropPrice,
+    profileUnit,
+    goalTotalProduction,
+    projectedTotalProduction,
+    projectedLow,
+    projectedHigh,
+    acreage,
+  } = params;
+
+  const priceUnit = `/${priceUnitFrom(profileUnit)}`;
+
+  const goalRevenue =
+    goalTotalProduction != null
+      ? Math.round(goalTotalProduction * cropPrice)
+      : null;
+
+  const projectedRevenueMid =
+    projectedTotalProduction != null
+      ? Math.round(projectedTotalProduction * cropPrice)
+      : null;
+
+  const projectedRevenueLow =
+    acreage != null
+      ? Math.round(projectedLow * acreage * cropPrice)
+      : null;
+
+  const projectedRevenueHigh =
+    acreage != null
+      ? Math.round(projectedHigh * acreage * cropPrice)
+      : null;
+
+  const revenueGap =
+    goalRevenue != null && projectedRevenueMid != null
+      ? goalRevenue - projectedRevenueMid
+      : null;
+
+  return {
+    pricePerUnit: cropPrice,
+    priceUnit,
+    goalRevenue,
+    projectedRevenueMid,
+    projectedRevenueLow,
+    projectedRevenueHigh,
+    revenueGap,
+  };
 }
 
 // ── Insight bullets ───────────────────────────────────────────────────────────
@@ -118,7 +217,6 @@ function buildInsights(
       "Ensure adequate late-season nutrition and irrigation to close the gap."
     );
   } else {
-    // below_goal
     tips.push(
       `Forecast is ${Math.round(Math.abs(gap))} ${YIELD_PROFILES[cropType]?.unit ?? "units"}/acre below your goal.`
     );
@@ -139,10 +237,12 @@ export function computeYieldGoal({
   insights,
   goalValue,
   acreage,
+  cropPrice,
 }: {
   insights: AgricultureInsights;
   goalValue: number | null | undefined;
   acreage: number | null | undefined;
+  cropPrice: number | null | undefined;
 }): YieldGoalResult {
   const {
     cropType,
@@ -155,7 +255,6 @@ export function computeYieldGoal({
     extremeEventsNext15Days,
   } = insights;
 
-  // Always compute the forecast, even without a goal, so we have the numbers
   const stageResult =
     accumulatedGDD != null
       ? getCurrentStage(cropType, accumulatedGDD)
@@ -172,7 +271,8 @@ export function computeYieldGoal({
     frostRiskLevel: (frostRisk?.level ?? "none") as RiskLevel,
     heatStressRiskLevel: (heatStressRisk?.level ?? "none") as RiskLevel,
     droughtRiskLevel: (droughtRisk?.level ?? "none") as RiskLevel,
-    harvestDisruptionRiskLevel: (harvestDisruptionRisk?.level ?? "none") as RiskLevel,
+    harvestDisruptionRiskLevel:
+      (harvestDisruptionRisk?.level ?? "none") as RiskLevel,
     precipitationDeficit: precipitationDeficit ?? 0,
     criticalEventCount,
   });
@@ -181,9 +281,24 @@ export function computeYieldGoal({
   const projectedMid = Math.round((estimatedLow + estimatedHigh) / 2);
 
   const hasGoal = goalValue != null && goalValue > 0;
+  const hasCropPrice = cropPrice != null && cropPrice > 0;
 
-  // If no goal, return a "no goal" result with forecast data still populated
   if (!hasGoal) {
+    const projectedTotalProduction =
+      acreage ? Math.round(projectedMid * acreage) : null;
+
+    const revenue = hasCropPrice
+      ? buildRevenue({
+          cropPrice: cropPrice!,
+          profileUnit: profile.unit,
+          goalTotalProduction: null,
+          projectedTotalProduction,
+          projectedLow: estimatedLow,
+          projectedHigh: estimatedHigh,
+          acreage,
+        })
+      : null;
+
     return {
       hasGoal: false,
       goalValue: null,
@@ -200,7 +315,8 @@ export function computeYieldGoal({
       gap: null,
       gapPct: null,
       goalTotalProduction: null,
-      projectedTotalProduction: acreage ? Math.round(projectedMid * acreage) : null,
+      projectedTotalProduction,
+      revenue,
       insights: [],
     };
   }
@@ -215,6 +331,18 @@ export function computeYieldGoal({
   const goalTotalProduction = acreage ? Math.round(gv * acreage) : null;
   const projectedTotalProduction = acreage
     ? Math.round(projectedMid * acreage)
+    : null;
+
+  const revenue = hasCropPrice
+    ? buildRevenue({
+        cropPrice: cropPrice!,
+        profileUnit: profile.unit,
+        goalTotalProduction,
+        projectedTotalProduction,
+        projectedLow: estimatedLow,
+        projectedHigh: estimatedHigh,
+        acreage,
+      })
     : null;
 
   const tips = buildInsights(status, cropType, gap, totalStressPenalty);
@@ -236,6 +364,7 @@ export function computeYieldGoal({
     gapPct,
     goalTotalProduction,
     projectedTotalProduction,
+    revenue,
     insights: tips,
   };
 }

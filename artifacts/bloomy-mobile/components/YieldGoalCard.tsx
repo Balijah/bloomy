@@ -15,7 +15,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { AgricultureInsights, FarmProfile } from "@workspace/api-client-react";
-import { computeYieldGoal, type GoalStatus } from "@/lib/yieldGoal";
+import { computeYieldGoal, type GoalStatus, type RevenueProjection } from "@/lib/yieldGoal";
 import { useColors } from "@/hooks/useColors";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -189,20 +189,30 @@ const sb = StyleSheet.create({
   text: { fontSize: 12, fontFamily: "Outfit_600SemiBold" },
 });
 
-// ── Total production row ──────────────────────────────────────────────────────
+// ── Production / revenue row ──────────────────────────────────────────────────
 
 function ProductionRow({
   label,
   value,
+  valueHigh,
   unit,
+  prefix,
   accent,
 }: {
   label: string;
   value: number;
+  valueHigh?: number;
   unit: string;
+  prefix?: string;
   accent?: boolean;
 }) {
   const colors = useColors();
+  const p = prefix ?? "";
+  const displayValue =
+    valueHigh != null
+      ? `${p}${value.toLocaleString()} – ${p}${valueHigh.toLocaleString()}`
+      : `${p}${value.toLocaleString()}`;
+
   return (
     <View style={pr.row}>
       <Text style={[pr.label, { color: colors.mutedForeground }]}>{label}</Text>
@@ -212,7 +222,7 @@ function ProductionRow({
           { color: accent ? colors.primary : colors.foreground },
         ]}
       >
-        {value.toLocaleString()}{" "}
+        {displayValue}{" "}
         <Text style={[pr.unit, { color: colors.mutedForeground }]}>{unit}</Text>
       </Text>
     </View>
@@ -224,10 +234,30 @@ const pr = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap",
+    gap: 4,
   },
   label: { fontSize: 13, fontFamily: "Outfit_400Regular" },
   value: { fontSize: 14, fontFamily: "Outfit_700Bold" },
   unit: { fontSize: 12, fontFamily: "Outfit_400Regular" },
+});
+
+// ── Revenue gap styles ─────────────────────────────────────────────────────────
+
+const rv = StyleSheet.create({
+  gapPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  gapText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Outfit_600SemiBold",
+  },
 });
 
 // ── Empty state ───────────────────────────────────────────────────────────────
@@ -324,6 +354,7 @@ export default function YieldGoalCard({ profile, insights }: Props) {
     insights,
     goalValue: profile.yieldGoal,
     acreage: profile.acreage,
+    cropPrice: profile.cropPrice,
   });
 
   const {
@@ -343,6 +374,7 @@ export default function YieldGoalCard({ profile, insights }: Props) {
     gapPct,
     goalTotalProduction,
     projectedTotalProduction,
+    revenue,
     insights: tipList,
   } = result;
 
@@ -530,6 +562,63 @@ export default function YieldGoalCard({ profile, insights }: Props) {
                 />
               )}
             </View>
+          </View>
+        </>
+      )}
+
+      {/* ── Revenue Projection ──────────────────────────────────────────── */}
+      {revenue != null && (revenue.projectedRevenueMid != null || revenue.goalRevenue != null) && (
+        <>
+          <View style={[s.divider, { backgroundColor: colors.border }]} />
+          <View style={s.section}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
+                Gross Revenue Projection
+              </Text>
+              <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>
+                ${revenue.pricePerUnit.toLocaleString()}{revenue.priceUnit}
+              </Text>
+            </View>
+
+            <View style={{ gap: 8 }}>
+              {revenue.goalRevenue != null && (
+                <ProductionRow
+                  label="At goal rate"
+                  value={revenue.goalRevenue}
+                  unit="USD"
+                  prefix="$"
+                />
+              )}
+              {revenue.projectedRevenueLow != null && revenue.projectedRevenueHigh != null && (
+                <ProductionRow
+                  label="Forecast range"
+                  value={revenue.projectedRevenueLow}
+                  valueHigh={revenue.projectedRevenueHigh}
+                  unit="USD"
+                  prefix="$"
+                  accent
+                />
+              )}
+            </View>
+
+            {/* Revenue gap pill */}
+            {revenue.revenueGap != null && (
+              <View style={[
+                rv.gapPill,
+                { backgroundColor: statusColor + "12", borderColor: statusColor + "30" },
+              ]}>
+                <Ionicons
+                  name={revenue.revenueGap <= 0 ? "trending-up" : "trending-down"}
+                  size={14}
+                  color={statusColor}
+                />
+                <Text style={[rv.gapText, { color: statusColor }]}>
+                  {revenue.revenueGap <= 0
+                    ? `$${Math.abs(revenue.revenueGap).toLocaleString()} ahead of revenue goal`
+                    : `$${revenue.revenueGap.toLocaleString()} revenue gap vs goal`}
+                </Text>
+              </View>
+            )}
           </View>
         </>
       )}

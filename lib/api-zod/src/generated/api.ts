@@ -236,6 +236,12 @@ export const GetFarmProfilesResponseItem = zod.object({
     .describe(
       "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
     ),
+  cropPrice: zod
+    .number()
+    .nullish()
+    .describe(
+      "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -267,6 +273,10 @@ export const CreateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Farmer's self-set yield target in crop-appropriate units"),
+  cropPrice: zod
+    .number()
+    .nullish()
+    .describe("Expected sale price per unit used for revenue projection"),
   notes: zod.string().nullish(),
 });
 
@@ -304,6 +314,12 @@ export const GetFarmProfileResponse = zod.object({
     .describe(
       "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
     ),
+  cropPrice: zod
+    .number()
+    .nullish()
+    .describe(
+      "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
+    ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -339,6 +355,10 @@ export const UpdateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Farmer's self-set yield target in crop-appropriate units"),
+  cropPrice: zod
+    .number()
+    .nullish()
+    .describe("Expected sale price per unit used for revenue projection"),
   notes: zod.string().nullish(),
 });
 
@@ -368,6 +388,12 @@ export const UpdateFarmProfileResponse = zod.object({
     .nullish()
     .describe(
       "Farmer's self-set yield target in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
+  cropPrice: zod
+    .number()
+    .nullish()
+    .describe(
+      "Expected sale price per unit (e.g. $\/bu, $\/lb) used for revenue projection",
     ),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),

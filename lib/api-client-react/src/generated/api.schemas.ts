@@ -297,6 +297,11 @@ export interface FarmProfile {
    * @nullable
    */
   yieldGoal?: number | null;
+  /**
+   * Expected sale price per unit (e.g. $/bu, $/lb) used for revenue projection
+   * @nullable
+   */
+  cropPrice?: number | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -335,6 +340,11 @@ export interface CreateFarmProfileBody {
    * @nullable
    */
   yieldGoal?: number | null;
+  /**
+   * Expected sale price per unit used for revenue projection
+   * @nullable
+   */
+  cropPrice?: number | null;
   /** @nullable */
   notes?: string | null;
 }
@@ -371,6 +381,11 @@ export interface UpdateFarmProfileBody {
    * @nullable
    */
   yieldGoal?: number | null;
+  /**
+   * Expected sale price per unit used for revenue projection
+   * @nullable
+   */
+  cropPrice?: number | null;
   /** @nullable */
   notes?: string | null;
 }

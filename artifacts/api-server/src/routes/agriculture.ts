@@ -57,6 +57,7 @@ router.post("/agriculture/farm-profiles", requireAuth, async (req, res): Promise
     plantingDate: parsed.data.plantingDate ? String(parsed.data.plantingDate) : null,
     harvestDate: parsed.data.harvestDate ? String(parsed.data.harvestDate) : null,
     yieldGoal: parsed.data.yieldGoal ?? null,
+    cropPrice: parsed.data.cropPrice ?? null,
     notes: parsed.data.notes ?? null,
   }).returning();
 
@@ -102,6 +103,7 @@ router.patch("/agriculture/farm-profiles/:id", requireAuth, async (req, res): Pr
   if (parsed.data.plantingDate !== undefined) updateData.plantingDate = parsed.data.plantingDate ? String(parsed.data.plantingDate) : null;
   if (parsed.data.harvestDate !== undefined) updateData.harvestDate = parsed.data.harvestDate ? String(parsed.data.harvestDate) : null;
   if (parsed.data.yieldGoal !== undefined) updateData.yieldGoal = parsed.data.yieldGoal ?? null;
+  if (parsed.data.cropPrice !== undefined) updateData.cropPrice = parsed.data.cropPrice ?? null;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
 
   const [updated] = await db.update(farmProfilesTable)

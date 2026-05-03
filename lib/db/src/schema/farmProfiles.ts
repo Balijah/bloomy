@@ -15,6 +15,7 @@ export const farmProfilesTable = pgTable("farm_profiles", {
   plantingDate: date("planting_date"),
   harvestDate: date("harvest_date"),
   yieldGoal: doublePrecision("yield_goal"),
+  cropPrice: doublePrecision("crop_price"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
