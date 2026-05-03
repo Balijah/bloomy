@@ -430,4 +430,148 @@ router.get("/agriculture/spray-window-alerts", requireAuth, async (req, res): Pr
   res.json({ upcomingWindows });
 });
 
+// ─── Peak risk alerts ─────────────────────────────────────────────────────────
+// Returns high/critical risk days for each farm (next 3 days) so the mobile
+// background task can fire targeted push notifications.
+
+function peakRiskDayLabel(dateStr: string, idx: number, isNight: boolean): string {
+  if (idx === 0) return isNight ? "tonight" : "today";
+  if (idx === 1) return isNight ? "tomorrow night" : "tomorrow";
+  const d = new Date(dateStr + "T12:00:00Z");
+  const name = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()];
+  return isNight ? `${name} night` : name;
+}
+
+router.get("/agriculture/peak-risk-alerts", requireAuth, async (req, res): Promise<void> => {
+  const userId = await getUserId(req);
+
+  const farms = await db
+    .select()
+    .from(farmProfilesTable)
+    .where(eq(farmProfilesTable.userId, userId));
+
+  if (!farms.length) {
+    res.json({ alerts: [] });
+    return;
+  }
+
+  const locationIds = [...new Set(farms.map((f) => f.locationId))];
+  const locs = await db.select().from(locationsTable).where(eq(locationsTable.userId, userId));
+  const locMap = Object.fromEntries(locs.map((l) => [l.id, l]));
+
+  const forecastByLocationId: Record<number, Array<{
+    date: string;
+    tempMax: number;
+    tempMin: number;
+    precipitationProbability: number;
+  }>> = {};
+
+  await Promise.all(
+    locationIds.map(async (lid) => {
+      const loc = locMap[lid];
+      if (!loc) return;
+      try {
+        forecastByLocationId[lid] = await fetchForecast(loc.lat, loc.lng) as any;
+      } catch {
+        // skip farms whose forecast fails
+      }
+    })
+  );
+
+  type PeakRiskEntry = {
+    farmId: number;
+    farmName: string;
+    cropType: string;
+    riskType: "frost" | "heat" | "drought";
+    peakDate: string;
+    dayLabel: string;
+    severity: "high" | "critical";
+    peakValue: number;
+    sentence: string;
+    recommendation: string;
+  };
+
+  const alerts: PeakRiskEntry[] = [];
+
+  for (const farm of farms) {
+    const forecast = forecastByLocationId[farm.locationId];
+    if (!forecast) continue;
+    const next3 = forecast.slice(0, 3);
+
+    // Frost — notify for high (< 32°F) and critical (< 28°F) only
+    let worstFrostIdx = -1;
+    let worstTempMin = Infinity;
+    next3.forEach((day, i) => {
+      if (day.tempMin < 32 && day.tempMin < worstTempMin) {
+        worstTempMin = day.tempMin;
+        worstFrostIdx = i;
+      }
+    });
+    if (worstFrostIdx >= 0) {
+      const severity: "high" | "critical" = worstTempMin < 28 ? "critical" : "high";
+      const dl = peakRiskDayLabel(next3[worstFrostIdx].date, worstFrostIdx, true);
+      const pv = Math.round(worstTempMin);
+      alerts.push({
+        farmId: farm.id, farmName: farm.name, cropType: farm.cropType,
+        riskType: "frost", peakDate: next3[worstFrostIdx].date, dayLabel: dl,
+        severity, peakValue: pv,
+        sentence: `Frost risk peaks ${dl} (${pv}°F low)`,
+        recommendation: severity === "critical"
+          ? `Move potted plants indoors and cover all sensitive crops ${dl} — hard freeze expected.`
+          : `Cover frost-sensitive crops ${dl} before temperatures drop below freezing.`,
+      });
+    }
+
+    // Heat — notify for high (> 100°F) and critical (> 108°F) only
+    let worstHeatIdx = -1;
+    let worstTempMax = -Infinity;
+    next3.forEach((day, i) => {
+      if (day.tempMax > 100 && day.tempMax > worstTempMax) {
+        worstTempMax = day.tempMax;
+        worstHeatIdx = i;
+      }
+    });
+    if (worstHeatIdx >= 0) {
+      const severity: "high" | "critical" = worstTempMax > 108 ? "critical" : "high";
+      const dl = peakRiskDayLabel(next3[worstHeatIdx].date, worstHeatIdx, false);
+      const pv = Math.round(worstTempMax);
+      alerts.push({
+        farmId: farm.id, farmName: farm.name, cropType: farm.cropType,
+        riskType: "heat", peakDate: next3[worstHeatIdx].date, dayLabel: dl,
+        severity, peakValue: pv,
+        sentence: `Heat stress peaks ${dl} (${pv}°F high)`,
+        recommendation: severity === "critical"
+          ? `Maximize irrigation ${dl} and delay field operations until temperatures ease.`
+          : `Increase irrigation frequency and avoid midday field work ${dl}.`,
+      });
+    }
+
+    // Drought — notify for high (< 15%) and critical (< 5%) only
+    let worstDroughtIdx = -1;
+    let worstPrecip = Infinity;
+    next3.forEach((day, i) => {
+      if (day.precipitationProbability < 15 && day.precipitationProbability < worstPrecip) {
+        worstPrecip = day.precipitationProbability;
+        worstDroughtIdx = i;
+      }
+    });
+    if (worstDroughtIdx >= 0) {
+      const severity: "high" | "critical" = worstPrecip < 5 ? "critical" : "high";
+      const dl = peakRiskDayLabel(next3[worstDroughtIdx].date, worstDroughtIdx, false);
+      const pv = Math.round(worstPrecip);
+      alerts.push({
+        farmId: farm.id, farmName: farm.name, cropType: farm.cropType,
+        riskType: "drought", peakDate: next3[worstDroughtIdx].date, dayLabel: dl,
+        severity, peakValue: pv,
+        sentence: `Driest day is ${dl} (${pv}% chance of rain)`,
+        recommendation: severity === "critical"
+          ? `Irrigate now — virtually no rainfall expected through ${dl}.`
+          : `Plan an irrigation cycle before ${dl} to maintain crop health.`,
+      });
+    }
+  }
+
+  res.json({ alerts });
+});
+
 export default router;

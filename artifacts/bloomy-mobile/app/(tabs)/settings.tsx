@@ -30,6 +30,8 @@ import { useGeofencing } from "@/contexts/GeofencingContext";
 import {
   getSprayAlertsEnabled,
   setSprayAlertsEnabled,
+  getPeakRiskAlertsEnabled,
+  setPeakRiskAlertsEnabled,
 } from "@/utils/backgroundAlerts";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
@@ -199,10 +201,12 @@ export default function SettingsScreen() {
   const [locLat, setLocLat] = useState("");
   const [locLng, setLocLng] = useState("");
   const [sprayAlertsEnabled, setSprayAlertsEnabledState] = useState(true);
+  const [peakRiskAlertsEnabled, setPeakRiskAlertsEnabledState] = useState(true);
 
   React.useEffect(() => {
     if (Platform.OS === "web") return;
     getSprayAlertsEnabled().then(setSprayAlertsEnabledState);
+    getPeakRiskAlertsEnabled().then(setPeakRiskAlertsEnabledState);
   }, []);
 
   const tier = user?.subscriptionTier ?? "free";
@@ -255,6 +259,13 @@ export default function SettingsScreen() {
     Haptics.selectionAsync();
     setSprayAlertsEnabledState(val);
     await setSprayAlertsEnabled(val);
+  }
+
+  async function handleTogglePeakRiskAlerts(val: boolean) {
+    if (notifUnavailable) return;
+    Haptics.selectionAsync();
+    setPeakRiskAlertsEnabledState(val);
+    await setPeakRiskAlertsEnabled(val);
   }
 
   function handleSetSeverity(sev: "critical" | "high" | "all") {
@@ -646,6 +657,44 @@ export default function SettingsScreen() {
                     {sprayAlertsEnabled
                       ? "Get notified when ideal or good spray conditions open up on any of your farms within the next 48 hours. Checked every 15 minutes in the background."
                       : "Spray window alerts are off. Re-enable to receive timely spray condition notifications."}
+                  </Text>
+                </View>
+
+                {/* Peak risk alerts toggle */}
+                <Divider />
+                <SettingRow
+                  icon={peakRiskAlertsEnabled ? "warning" : "warning-outline"}
+                  label="Peak Risk Alerts"
+                  testID="row-peak-risk-alerts-toggle"
+                  right={
+                    <Switch
+                      value={peakRiskAlertsEnabled}
+                      onValueChange={handleTogglePeakRiskAlerts}
+                      trackColor={{
+                        false: colors.muted,
+                        true: colors.primary + "88",
+                      }}
+                      thumbColor={
+                        peakRiskAlertsEnabled
+                          ? colors.primary
+                          : colors.mutedForeground
+                      }
+                      testID="switch-peak-risk-alerts"
+                    />
+                  }
+                />
+                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Outfit_400Regular",
+                      color: colors.mutedForeground,
+                      lineHeight: 17,
+                    }}
+                  >
+                    {peakRiskAlertsEnabled
+                      ? "Get notified when a high or critical frost, heat, or drought risk peaks on any of your farms within the next 3 days. Each alert includes the peak timing and a recommended action."
+                      : "Peak risk alerts are off. Re-enable to receive advance warning of dangerous frost, heat, and drought conditions."}
                   </Text>
                 </View>
 

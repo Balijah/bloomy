@@ -24,8 +24,10 @@ export const BG_BASE_URL_KEY     = "bloomy_bg_base_url";
 export const CACHED_ALERTS_KEY   = "bloomy_cached_alerts";
 const SEEN_IDS_KEY               = "bloomy_seen_alert_ids";
 const WEEKLY_DIGEST_SENT_KEY     = "bloomy_weekly_digest_sent_date";
-const SPRAY_ALERT_SEEN_KEY       = "bloomy_spray_alert_seen";
+const SPRAY_ALERT_SEEN_KEY            = "bloomy_spray_alert_seen";
 export const SPRAY_ALERTS_ENABLED_KEY = "bloomy_spray_alerts_enabled";
+const PEAK_RISK_ALERT_SEEN_KEY        = "bloomy_peak_risk_alert_seen";
+export const PEAK_RISK_ALERTS_ENABLED_KEY = "bloomy_peak_risk_alerts_enabled";
 
 interface AlertItem {
   id: number;
@@ -300,6 +302,85 @@ async function checkAndFireSprayWindowAlerts(
   }
 }
 
+// ─── Peak risk alerts ─────────────────────────────────────────────────────────
+
+interface PeakRiskEntry {
+  farmId: number;
+  farmName: string;
+  cropType: string;
+  riskType: "frost" | "heat" | "drought";
+  peakDate: string;
+  dayLabel: string;
+  severity: "high" | "critical";
+  peakValue: number;
+  sentence: string;
+  recommendation: string;
+}
+
+/** Returns true if peak-risk notifications are enabled (default: true). */
+export async function getPeakRiskAlertsEnabled(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(PEAK_RISK_ALERTS_ENABLED_KEY);
+  return val !== "false";
+}
+
+/** Persist the user's preference for peak-risk notifications. */
+export async function setPeakRiskAlertsEnabled(val: boolean): Promise<void> {
+  await AsyncStorage.setItem(PEAK_RISK_ALERTS_ENABLED_KEY, val ? "true" : "false");
+}
+
+async function checkAndFirePeakRiskAlerts(
+  token: string | null,
+  baseUrl: string | null
+): Promise<void> {
+  if (!token || !baseUrl) return;
+
+  const enabled = await getPeakRiskAlertsEnabled();
+  if (!enabled) return;
+
+  try {
+    const resp = await fetch(`${baseUrl}/api/agriculture/peak-risk-alerts`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const entries: PeakRiskEntry[] = data.alerts ?? [];
+    if (!entries.length) return;
+
+    // Deduplicate — only notify once per farm + date + risk type
+    const seenRaw = await AsyncStorage.getItem(PEAK_RISK_ALERT_SEEN_KEY);
+    const seen = new Set<string>(seenRaw ? JSON.parse(seenRaw) : []);
+
+    const fresh = entries.filter(
+      (e) => !seen.has(`${e.farmId}_${e.peakDate}_${e.riskType}`)
+    );
+    if (!fresh.length) return;
+
+    // Fire one notification per new entry (cap at 3 to avoid spam)
+    for (const e of fresh.slice(0, 3)) {
+      const riskIcon = e.riskType === "frost" ? "❄" : e.riskType === "heat" ? "🌡" : "🌾";
+      const severityWord = e.severity === "critical" ? "Critical" : "High";
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `${riskIcon} ${severityWord} Risk — ${e.farmName}`,
+          body: `${e.sentence}. ${e.recommendation}`,
+          data: { screen: "farm", farmProfileId: e.farmId },
+          sound: "default",
+        },
+        trigger: null,
+      });
+      seen.add(`${e.farmId}_${e.peakDate}_${e.riskType}`);
+    }
+
+    // Trim to last 300 entries to prevent unbounded growth
+    const trimmed = [...seen].slice(-300);
+    await AsyncStorage.setItem(PEAK_RISK_ALERT_SEEN_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Network or parse failure — silently skip; retry next cycle
+  }
+}
+
 // ─── Task definition ─────────────────────────────────────────────────────────
 // Must be called at module level (not inside a component or function).
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
@@ -310,10 +391,11 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
       AsyncStorage.getItem(CACHED_ALERTS_KEY),
     ]);
 
-    // Weekly digest + spray window checks run independently of the alert poll
+    // Weekly digest, spray window, and peak risk checks run independently
     await Promise.all([
       checkAndFireWeeklyDigest(token, baseUrl),
       checkAndFireSprayWindowAlerts(token, baseUrl),
+      checkAndFirePeakRiskAlerts(token, baseUrl),
     ]);
 
     let alerts: AlertItem[] | null = null;
