@@ -720,6 +720,35 @@ export interface DashboardSummary {
   weeklyTempRange: TempRange;
 }
 
+export interface YieldRecord {
+  id: number;
+  farmProfileId: number;
+  userId: number;
+  /** Four-digit harvest year (e.g. 2023) */
+  harvestYear: number;
+  /** Harvested yield in crop-appropriate units (bu/acre, lbs/acre, etc.) */
+  actualYield: number;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateYieldRecordBody {
+  /** Four-digit harvest year */
+  harvestYear: number;
+  /** Harvested yield in crop units */
+  actualYield: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface UpdateYieldRecordBody {
+  actualYield?: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export type GetCurrentWeatherParams = {
   lat: number;
   lng: number;

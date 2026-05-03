@@ -25,6 +25,7 @@ import type {
   CreateFarmProfileBody,
   CreateFieldNoteBody,
   CreateLocationBody,
+  CreateYieldRecordBody,
   CurrentWeather,
   DailyForecast,
   DashboardSummary,
@@ -47,7 +48,9 @@ import type {
   UpdateFieldNoteBody,
   UpdateLocationBody,
   UpdateUserProfileBody,
+  UpdateYieldRecordBody,
   UserProfile,
+  YieldRecord,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1755,6 +1758,353 @@ export const useDeleteFieldNote = <
   TContext
 > => {
   return useMutation(getDeleteFieldNoteMutationOptions(options));
+};
+
+/**
+ * @summary List historical yield records for a farm profile
+ */
+export const getGetYieldRecordsUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/yield-records`;
+};
+
+export const getYieldRecords = async (
+  id: number,
+  options?: RequestInit,
+): Promise<YieldRecord[]> => {
+  return customFetch<YieldRecord[]>(getGetYieldRecordsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetYieldRecordsQueryKey = (id: number) => {
+  return [`/api/agriculture/farm-profiles/${id}/yield-records`] as const;
+};
+
+export const getGetYieldRecordsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getYieldRecords>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getYieldRecords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetYieldRecordsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getYieldRecords>>> = ({
+    signal,
+  }) => getYieldRecords(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getYieldRecords>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetYieldRecordsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getYieldRecords>>
+>;
+export type GetYieldRecordsQueryError = ErrorType<void>;
+
+/**
+ * @summary List historical yield records for a farm profile
+ */
+
+export function useGetYieldRecords<
+  TData = Awaited<ReturnType<typeof getYieldRecords>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getYieldRecords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetYieldRecordsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Log a harvested yield for a given year
+ */
+export const getCreateYieldRecordUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/yield-records`;
+};
+
+export const createYieldRecord = async (
+  id: number,
+  createYieldRecordBody: CreateYieldRecordBody,
+  options?: RequestInit,
+): Promise<YieldRecord> => {
+  return customFetch<YieldRecord>(getCreateYieldRecordUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createYieldRecordBody),
+  });
+};
+
+export const getCreateYieldRecordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createYieldRecord>>,
+    TError,
+    { id: number; data: BodyType<CreateYieldRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createYieldRecord>>,
+  TError,
+  { id: number; data: BodyType<CreateYieldRecordBody> },
+  TContext
+> => {
+  const mutationKey = ["createYieldRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createYieldRecord>>,
+    { id: number; data: BodyType<CreateYieldRecordBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createYieldRecord(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateYieldRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createYieldRecord>>
+>;
+export type CreateYieldRecordMutationBody = BodyType<CreateYieldRecordBody>;
+export type CreateYieldRecordMutationError = ErrorType<void>;
+
+/**
+ * @summary Log a harvested yield for a given year
+ */
+export const useCreateYieldRecord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createYieldRecord>>,
+    TError,
+    { id: number; data: BodyType<CreateYieldRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createYieldRecord>>,
+  TError,
+  { id: number; data: BodyType<CreateYieldRecordBody> },
+  TContext
+> => {
+  return useMutation(getCreateYieldRecordMutationOptions(options));
+};
+
+/**
+ * @summary Update a yield record
+ */
+export const getUpdateYieldRecordUrl = (id: number, recordId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/yield-records/${recordId}`;
+};
+
+export const updateYieldRecord = async (
+  id: number,
+  recordId: number,
+  updateYieldRecordBody: UpdateYieldRecordBody,
+  options?: RequestInit,
+): Promise<YieldRecord> => {
+  return customFetch<YieldRecord>(getUpdateYieldRecordUrl(id, recordId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateYieldRecordBody),
+  });
+};
+
+export const getUpdateYieldRecordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateYieldRecord>>,
+    TError,
+    { id: number; recordId: number; data: BodyType<UpdateYieldRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateYieldRecord>>,
+  TError,
+  { id: number; recordId: number; data: BodyType<UpdateYieldRecordBody> },
+  TContext
+> => {
+  const mutationKey = ["updateYieldRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateYieldRecord>>,
+    { id: number; recordId: number; data: BodyType<UpdateYieldRecordBody> }
+  > = (props) => {
+    const { id, recordId, data } = props ?? {};
+
+    return updateYieldRecord(id, recordId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateYieldRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateYieldRecord>>
+>;
+export type UpdateYieldRecordMutationBody = BodyType<UpdateYieldRecordBody>;
+export type UpdateYieldRecordMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a yield record
+ */
+export const useUpdateYieldRecord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateYieldRecord>>,
+    TError,
+    { id: number; recordId: number; data: BodyType<UpdateYieldRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateYieldRecord>>,
+  TError,
+  { id: number; recordId: number; data: BodyType<UpdateYieldRecordBody> },
+  TContext
+> => {
+  return useMutation(getUpdateYieldRecordMutationOptions(options));
+};
+
+/**
+ * @summary Delete a yield record
+ */
+export const getDeleteYieldRecordUrl = (id: number, recordId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/yield-records/${recordId}`;
+};
+
+export const deleteYieldRecord = async (
+  id: number,
+  recordId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteYieldRecordUrl(id, recordId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteYieldRecordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteYieldRecord>>,
+    TError,
+    { id: number; recordId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteYieldRecord>>,
+  TError,
+  { id: number; recordId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteYieldRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteYieldRecord>>,
+    { id: number; recordId: number }
+  > = (props) => {
+    const { id, recordId } = props ?? {};
+
+    return deleteYieldRecord(id, recordId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteYieldRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteYieldRecord>>
+>;
+
+export type DeleteYieldRecordMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a yield record
+ */
+export const useDeleteYieldRecord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteYieldRecord>>,
+    TError,
+    { id: number; recordId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteYieldRecord>>,
+  TError,
+  { id: number; recordId: number },
+  TContext
+> => {
+  return useMutation(getDeleteYieldRecordMutationOptions(options));
 };
 
 /**

@@ -565,6 +565,78 @@ export const DeleteFieldNoteParams = zod.object({
 });
 
 /**
+ * @summary List historical yield records for a farm profile
+ */
+export const GetYieldRecordsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetYieldRecordsResponseItem = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  harvestYear: zod.number().describe("Four-digit harvest year (e.g. 2023)"),
+  actualYield: zod
+    .number()
+    .describe(
+      "Harvested yield in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetYieldRecordsResponse = zod.array(GetYieldRecordsResponseItem);
+
+/**
+ * @summary Log a harvested yield for a given year
+ */
+export const CreateYieldRecordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateYieldRecordBody = zod.object({
+  harvestYear: zod.number().describe("Four-digit harvest year"),
+  actualYield: zod.number().describe("Harvested yield in crop units"),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a yield record
+ */
+export const UpdateYieldRecordParams = zod.object({
+  id: zod.coerce.number(),
+  recordId: zod.coerce.number(),
+});
+
+export const UpdateYieldRecordBody = zod.object({
+  actualYield: zod.number().optional(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateYieldRecordResponse = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  harvestYear: zod.number().describe("Four-digit harvest year (e.g. 2023)"),
+  actualYield: zod
+    .number()
+    .describe(
+      "Harvested yield in crop-appropriate units (bu\/acre, lbs\/acre, etc.)",
+    ),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a yield record
+ */
+export const DeleteYieldRecordParams = zod.object({
+  id: zod.coerce.number(),
+  recordId: zod.coerce.number(),
+});
+
+/**
  * @summary Get crop-specific weather insights for a farm profile
  */
 export const GetAgricultureInsightsParams = zod.object({

@@ -469,6 +469,118 @@ paths:
         "404":
           description: Note not found
 
+  /agriculture/farm-profiles/{id}/yield-records:
+    get:
+      operationId: getYieldRecords
+      tags: [agriculture]
+      summary: List historical yield records for a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of yield records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/YieldRecord"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+    post:
+      operationId: createYieldRecord
+      tags: [agriculture]
+      summary: Log a harvested yield for a given year
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateYieldRecordBody"
+      responses:
+        "201":
+          description: Created yield record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YieldRecord"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+
+  /agriculture/farm-profiles/{id}/yield-records/{recordId}:
+    put:
+      operationId: updateYieldRecord
+      tags: [agriculture]
+      summary: Update a yield record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateYieldRecordBody"
+      responses:
+        "200":
+          description: Updated yield record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YieldRecord"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Record not found
+    delete:
+      operationId: deleteYieldRecord
+      tags: [agriculture]
+      summary: Delete a yield record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Record not found
+
   /agriculture/insights/{farmProfileId}:
     get:
       operationId: getAgricultureInsights
@@ -1593,3 +1705,58 @@ components:
       required:
         - min
         - max
+
+    YieldRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        farmProfileId:
+          type: integer
+        userId:
+          type: integer
+        harvestYear:
+          type: integer
+          description: Four-digit harvest year (e.g. 2023)
+        actualYield:
+          type: number
+          description: Harvested yield in crop-appropriate units (bu/acre, lbs/acre, etc.)
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - farmProfileId
+        - userId
+        - harvestYear
+        - actualYield
+        - createdAt
+        - updatedAt
+
+    CreateYieldRecordBody:
+      type: object
+      properties:
+        harvestYear:
+          type: integer
+          description: Four-digit harvest year
+        actualYield:
+          type: number
+          description: Harvested yield in crop units
+        notes:
+          type: ["string", "null"]
+      required:
+        - harvestYear
+        - actualYield
+
+    UpdateYieldRecordBody:
+      type: object
+      properties:
+        actualYield:
+          type: number
+        notes:
+          type: ["string", "null"]
