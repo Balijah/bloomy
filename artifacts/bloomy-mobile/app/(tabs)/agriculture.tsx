@@ -6,13 +6,15 @@ import {
   getGetFarmProfilesQueryKey,
   getGetAgricultureInsightsQueryKey,
   getGetAgricultureInsightsQueryOptions,
+  getGetLocationsQueryKey,
+  getGetSprayWindowAlertsQueryKey,
   type AgricultureInsights,
   type SprayWindowEntry,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -358,7 +360,8 @@ export default function AgricultureScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const queryClient = useQueryClient();
 
-  const { data: profiles, isLoading, refetch, isRefetching } = useGetFarmProfiles();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { data: profiles, isLoading, refetch } = useGetFarmProfiles();
   const { data: locations } = useGetLocations();
   const { data: sprayAlerts } = useGetSprayWindowAlerts({
     query: { queryKey: ["sprayWindowAlerts"], staleTime: 10 * 60 * 1000, retry: false },
@@ -447,6 +450,27 @@ export default function AgricultureScreen() {
     prefetchInsights();
   }, [prefetchInsights]);
 
+  // Pull-to-refresh: invalidates profiles, locations, spray alerts, and all
+  // farm insights in parallel so every badge updates at once.
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const insightsInvalidations = (profiles ?? []).map((p) =>
+        queryClient.invalidateQueries({
+          queryKey: getGetAgricultureInsightsQueryKey(p.id),
+        })
+      );
+      await Promise.all([
+        refetch(),
+        queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetSprayWindowAlertsQueryKey() }),
+        ...insightsInvalidations,
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [profiles, queryClient, refetch]);
+
   function handleDelete(id: number, name: string) {
     Alert.alert(
       "Delete farm profile?",
@@ -525,8 +549,8 @@ export default function AgricultureScreen() {
         ]}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
             tintColor={colors.primary}
           />
         }
