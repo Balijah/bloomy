@@ -461,6 +461,73 @@ export default function AgricultureDetailScreen() {
         </Text>
       </View>
 
+      {/* Risk Alerts — active risks only, sorted by severity */}
+      {(() => {
+        const candidates = [
+          { title: "Frost Risk",    risk: insights.frostRisk,             icon: "snow-outline"          },
+          { title: "Heat Stress",   risk: insights.heatStressRisk,        icon: "thermometer-outline"   },
+          { title: "Drought Risk",  risk: insights.droughtRisk,           icon: "warning-outline"       },
+          { title: "Harvest Risk",  risk: insights.harvestDisruptionRisk, icon: "cloud-offline-outline" },
+        ] as const;
+
+        const SEVERITY_ORDER = ["critical", "high", "moderate", "low", "none"] as const;
+
+        const active = candidates
+          .filter(({ risk }) => {
+            const lvl = risk?.level;
+            return lvl === "moderate" || lvl === "high" || lvl === "critical";
+          })
+          .sort(
+            (a, b) =>
+              SEVERITY_ORDER.indexOf(a.risk?.level as any) -
+              SEVERITY_ORDER.indexOf(b.risk?.level as any)
+          );
+
+        return (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Risk Alerts</Text>
+            {active.length === 0 ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: "#3D9A5015",
+                  borderWidth: 1,
+                  borderColor: "#3D9A5040",
+                  borderRadius: colors.radius,
+                  padding: 14,
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color="#3D9A50" />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontFamily: "Outfit_500Medium",
+                    color: "#3D9A50",
+                    flex: 1,
+                  }}
+                >
+                  All risks within safe levels
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {active.map(({ title, risk, icon }) => (
+                  <RiskCard
+                    key={title}
+                    title={title}
+                    level={risk?.level}
+                    description={risk?.description}
+                    icon={icon}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      })()}
+
       {/* Planting & Harvest Tracker */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Planting Tracker</Text>
@@ -570,38 +637,6 @@ export default function AgricultureDetailScreen() {
         />
       </View>
 
-      {/* Risk Assessment */}
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>Risk Assessment</Text>
-        <View style={{ gap: 10 }}>
-          <RiskCard
-            title="Frost Risk"
-            level={insights.frostRisk?.level}
-            description={insights.frostRisk?.description}
-            icon="thermometer-outline"
-          />
-          <RiskCard
-            title="Heat Stress"
-            level={insights.heatStressRisk?.level}
-            description={insights.heatStressRisk?.description}
-            icon="sunny-outline"
-          />
-          <RiskCard
-            title="Drought Risk"
-            level={insights.droughtRisk?.level}
-            description={insights.droughtRisk?.description}
-            icon="leaf-outline"
-          />
-          {insights.harvestDisruptionRisk && (
-            <RiskCard
-              title="Harvest Risk"
-              level={insights.harvestDisruptionRisk?.level}
-              description={insights.harvestDisruptionRisk?.description}
-              icon="cloud-offline-outline"
-            />
-          )}
-        </View>
-      </View>
 
       {/* Soil & Moisture */}
       <View style={s.section}>
