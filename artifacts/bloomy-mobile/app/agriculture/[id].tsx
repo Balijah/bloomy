@@ -41,6 +41,7 @@ import SprayWindowCard from "@/components/SprayWindowCard";
 import IrrigationCard from "@/components/IrrigationCard";
 import ScoutingLogCard from "@/components/ScoutingLogCard";
 import DiseaseRiskCard from "@/components/DiseaseRiskCard";
+import PlantingDateCard from "@/components/PlantingDateCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -427,6 +428,12 @@ export default function AgricultureDetailScreen() {
         <Text style={s.gddLabel}>
           Growing Degree Days (15-day forecast)
         </Text>
+      </View>
+
+      {/* Planting & Harvest Tracker */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Planting Tracker</Text>
+        <PlantingDateCard profile={profile} insights={insights} />
       </View>
 
       {/* Growth Stage Tracker */}

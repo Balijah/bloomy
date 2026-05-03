@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import DatePickerField from "@/components/DatePickerField";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -452,24 +453,20 @@ export default function EditFarmScreen() {
         </View>
 
         {/* Planting date */}
-        <View>
-          <FieldLabel text="Planting date (optional)" />
-          <StyledInput
-            value={plantingDate}
-            onChangeText={setPlantingDate}
-            placeholder="YYYY-MM-DD"
-          />
-        </View>
+        <DatePickerField
+          label="Planting date (optional)"
+          value={plantingDate}
+          onChange={setPlantingDate}
+          maxDate={new Date()}
+        />
 
         {/* Harvest date */}
-        <View>
-          <FieldLabel text="Harvest date (optional)" />
-          <StyledInput
-            value={harvestDate}
-            onChangeText={setHarvestDate}
-            placeholder="YYYY-MM-DD"
-          />
-        </View>
+        <DatePickerField
+          label="Harvest date (optional)"
+          value={harvestDate}
+          onChange={setHarvestDate}
+          minDate={plantingDate ? (() => { const [y,m,d] = plantingDate.split("-").map(Number); return new Date(y,(m??1)-1,(d??1)); })() : undefined}
+        />
 
         {/* Notes */}
         <View>

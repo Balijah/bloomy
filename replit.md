@@ -128,6 +128,27 @@ Server-side weekly digest cron (`artifacts/api-server/src/lib/weeklyDigest.ts`):
 - **Push channel**: Expo push notification to registered devices — single-farm personalised or multi-farm aggregate; chunked 100/request
 - Logs: `usersProcessed`, `emailSent`, `emailFailed`, `pushSuccess`, `pushFail`, `badTokens`
 
+## Planting Date Tracker (mobile)
+
+`lib/plantingCalendar.ts` — pure computation (no extra API calls):
+- `computePlantingCalendar()` — takes `cropType`, `plantingDate`, `harvestDate`, `accumulatedGDD`, `growingDegreeDaysForecast`
+- Derives: days since planting, GDD progress (fraction 0–1), remaining GDD, projected days-to-harvest, projected harvest date, daily GDD rate (~forecast/15), `harvestWindowReached` flag
+- Harvest GDD threshold comes from the last stage's `gddMax` in `cropStages.ts`
+
+`components/PlantingDateCard.tsx` — hero tracker card placed above Growth Stage on farm detail screen:
+- **No planting date**: empty state with "Set Planting Date" CTA linking to edit form
+- **Active state**: 3 stat pills (planted date, days in field, target harvest or daily GDD rate), animated GDD progress bar with harvest flag marker, harvest countdown (big number + projected calendar date + GDD/day rate), disclaimer footer
+- **Harvest window reached**: amber "Harvest Window Reached" banner instead of countdown
+- "Edit dates" button routes to edit form
+
+`components/DatePickerField.tsx` — cross-platform date picker replacing bare text inputs in edit form:
+- iOS: pressable field → native spinner in a modal bottom sheet with Done/Clear actions
+- Android: native date picker dialog
+- Web: plain `TextInput` with YYYY-MM-DD format
+- Accepts `minDate`/`maxDate` constraints; harvest date minimum is set to the recorded planting date
+
+Package added: `@react-native-community/datetimepicker`
+
 ## PDF Exports (mobile only)
 
 Farm Report (`lib/farmReport.ts` + farm detail screen share button):
