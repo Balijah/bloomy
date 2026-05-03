@@ -42,16 +42,12 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const isLoaded = signInLoaded && signUpLoaded;
-  const canSubmit = isLoaded && !loading && email.trim().length > 0 && password.length > 0;
+  const canSubmit = !loading && email.trim().length > 0 && password.length > 0;
   const authStateMessage = !isLoaded ? "Loading auth…" : "";
 
   async function handleSignIn() {
     if (!signIn) {
-      setError("Authentication is still loading. Please try again in a moment.");
-      return;
-    }
-    if (!isLoaded) {
-      setError("Authentication is still loading. Please try again in a moment.");
+      setError("Authentication is unavailable right now. Please try again.");
       return;
     }
     if (!email.trim() || !password) {
@@ -76,11 +72,7 @@ export default function SignInScreen() {
 
   async function handleSignUp() {
     if (!signUp) {
-      setError("Authentication is still loading. Please try again in a moment.");
-      return;
-    }
-    if (!isLoaded) {
-      setError("Authentication is still loading. Please try again in a moment.");
+      setError("Authentication is unavailable right now. Please try again.");
       return;
     }
     if (!email.trim() || !password) {
@@ -101,7 +93,7 @@ export default function SignInScreen() {
   }
 
   async function handleVerify() {
-    if (!signUp || !isLoaded) return;
+    if (!signUp) return;
     setError("");
     setLoading(true);
     try {
@@ -166,7 +158,7 @@ export default function SignInScreen() {
               <Pressable
                 style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
                 onPress={handleVerify}
-                disabled={loading || !isLoaded}
+                disabled={loading}
                 testID="button-verify"
               >
                 {loading ? (
