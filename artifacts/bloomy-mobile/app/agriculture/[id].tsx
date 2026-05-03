@@ -530,7 +530,11 @@ export default function AgricultureDetailScreen() {
       {/* Spray Windows */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>Spray Windows</Text>
-        <SprayWindowCard insights={insights} />
+        <SprayWindowCard
+          insights={insights}
+          lat={currentLocation?.lat}
+          lng={currentLocation?.lng}
+        />
       </View>
 
       {/* Irrigation */}
