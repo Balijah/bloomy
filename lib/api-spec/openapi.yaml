@@ -1247,6 +1247,22 @@ components:
         costPerAcre:
           type: ["number", "null"]
           description: Estimated total production cost per acre (seed, fertilizer, labor, etc.)
+        aphYield:
+          type: ["number", "null"]
+          description: Actual Production History proven yield (average of 4-10 prior harvests)
+        insurancePlanType:
+          type: ["string", "null"]
+          enum: [RP, RPHPE, YP, null]
+          description: Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)
+        coverageLevel:
+          type: ["number", "null"]
+          description: Insurance coverage level as decimal (0.50 to 0.95)
+        projectedPrice:
+          type: ["number", "null"]
+          description: RMA projected price for the crop year ($/unit)
+        priceElection:
+          type: ["number", "null"]
+          description: Price election as decimal (0.85 to 1.00 of projected price)
         notes:
           type: ["string", "null"]
         createdAt:
@@ -1289,6 +1305,21 @@ components:
         costPerAcre:
           type: ["number", "null"]
           description: Estimated total production cost per acre
+        aphYield:
+          type: ["number", "null"]
+          description: APH proven yield
+        insurancePlanType:
+          type: ["string", "null"]
+          enum: [RP, RPHPE, YP, null]
+        coverageLevel:
+          type: ["number", "null"]
+          description: Insurance coverage level as decimal (0.50 to 0.95)
+        projectedPrice:
+          type: ["number", "null"]
+          description: RMA projected price for the crop year
+        priceElection:
+          type: ["number", "null"]
+          description: Price election as decimal (0.85 to 1.00)
         notes:
           type: ["string", "null"]
       required:
@@ -1323,6 +1354,21 @@ components:
         costPerAcre:
           type: ["number", "null"]
           description: Estimated total production cost per acre
+        aphYield:
+          type: ["number", "null"]
+          description: APH proven yield
+        insurancePlanType:
+          type: ["string", "null"]
+          enum: [RP, RPHPE, YP, null]
+        coverageLevel:
+          type: ["number", "null"]
+          description: Insurance coverage level as decimal (0.50 to 0.95)
+        projectedPrice:
+          type: ["number", "null"]
+          description: RMA projected price for the crop year
+        priceElection:
+          type: ["number", "null"]
+          description: Price election as decimal (0.85 to 1.00)
         notes:
           type: ["string", "null"]
 

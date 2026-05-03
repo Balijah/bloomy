@@ -278,6 +278,20 @@ export const FarmProfileCropType = {
   other: "other",
 } as const;
 
+/**
+ * Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)
+ * @nullable
+ */
+export type FarmProfileInsurancePlanType =
+  | (typeof FarmProfileInsurancePlanType)[keyof typeof FarmProfileInsurancePlanType]
+  | null;
+
+export const FarmProfileInsurancePlanType = {
+  RP: "RP",
+  RPHPE: "RPHPE",
+  YP: "YP",
+} as const;
+
 export interface FarmProfile {
   id: number;
   userId: number;
@@ -307,6 +321,31 @@ export interface FarmProfile {
    * @nullable
    */
   costPerAcre?: number | null;
+  /**
+   * Actual Production History proven yield (average of 4-10 prior harvests)
+   * @nullable
+   */
+  aphYield?: number | null;
+  /**
+   * Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)
+   * @nullable
+   */
+  insurancePlanType?: FarmProfileInsurancePlanType;
+  /**
+   * Insurance coverage level as decimal (0.50 to 0.95)
+   * @nullable
+   */
+  coverageLevel?: number | null;
+  /**
+   * RMA projected price for the crop year ($/unit)
+   * @nullable
+   */
+  projectedPrice?: number | null;
+  /**
+   * Price election as decimal (0.85 to 1.00 of projected price)
+   * @nullable
+   */
+  priceElection?: number | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -326,6 +365,19 @@ export const CreateFarmProfileBodyCropType = {
   potatoes: "potatoes",
   rice: "rice",
   other: "other",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CreateFarmProfileBodyInsurancePlanType =
+  | (typeof CreateFarmProfileBodyInsurancePlanType)[keyof typeof CreateFarmProfileBodyInsurancePlanType]
+  | null;
+
+export const CreateFarmProfileBodyInsurancePlanType = {
+  RP: "RP",
+  RPHPE: "RPHPE",
+  YP: "YP",
 } as const;
 
 export interface CreateFarmProfileBody {
@@ -355,6 +407,28 @@ export interface CreateFarmProfileBody {
    * @nullable
    */
   costPerAcre?: number | null;
+  /**
+   * APH proven yield
+   * @nullable
+   */
+  aphYield?: number | null;
+  /** @nullable */
+  insurancePlanType?: CreateFarmProfileBodyInsurancePlanType;
+  /**
+   * Insurance coverage level as decimal (0.50 to 0.95)
+   * @nullable
+   */
+  coverageLevel?: number | null;
+  /**
+   * RMA projected price for the crop year
+   * @nullable
+   */
+  projectedPrice?: number | null;
+  /**
+   * Price election as decimal (0.85 to 1.00)
+   * @nullable
+   */
+  priceElection?: number | null;
   /** @nullable */
   notes?: string | null;
 }
@@ -373,6 +447,19 @@ export const UpdateFarmProfileBodyCropType = {
   potatoes: "potatoes",
   rice: "rice",
   other: "other",
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateFarmProfileBodyInsurancePlanType =
+  | (typeof UpdateFarmProfileBodyInsurancePlanType)[keyof typeof UpdateFarmProfileBodyInsurancePlanType]
+  | null;
+
+export const UpdateFarmProfileBodyInsurancePlanType = {
+  RP: "RP",
+  RPHPE: "RPHPE",
+  YP: "YP",
 } as const;
 
 export interface UpdateFarmProfileBody {
@@ -401,6 +488,28 @@ export interface UpdateFarmProfileBody {
    * @nullable
    */
   costPerAcre?: number | null;
+  /**
+   * APH proven yield
+   * @nullable
+   */
+  aphYield?: number | null;
+  /** @nullable */
+  insurancePlanType?: UpdateFarmProfileBodyInsurancePlanType;
+  /**
+   * Insurance coverage level as decimal (0.50 to 0.95)
+   * @nullable
+   */
+  coverageLevel?: number | null;
+  /**
+   * RMA projected price for the crop year
+   * @nullable
+   */
+  projectedPrice?: number | null;
+  /**
+   * Price election as decimal (0.85 to 1.00)
+   * @nullable
+   */
+  priceElection?: number | null;
   /** @nullable */
   notes?: string | null;
 }

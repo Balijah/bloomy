@@ -26,6 +26,12 @@ import { useColors } from "@/hooks/useColors";
 import DatePickerField from "@/components/DatePickerField";
 import { YIELD_PROFILES_PUBLIC } from "@/lib/yieldForecast";
 import { CROP_MARKET_PRICES, CROP_COST_HINTS } from "@/lib/yieldGoal";
+import {
+  COVERAGE_LEVELS,
+  PRICE_ELECTION_OPTIONS,
+  RMA_PROJECTED_PRICES_2025,
+  type InsurancePlanType,
+} from "@/lib/insuranceMath";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -130,6 +136,11 @@ export default function EditFarmScreen() {
   const [yieldGoal, setYieldGoal] = useState("");
   const [cropPrice, setCropPrice] = useState("");
   const [costPerAcre, setCostPerAcre] = useState("");
+  const [aphYield, setAphYield] = useState("");
+  const [insurancePlanType, setInsurancePlanType] = useState<InsurancePlanType | null>(null);
+  const [coverageLevel, setCoverageLevel] = useState<number | null>(null);
+  const [projectedPrice, setProjectedPrice] = useState("");
+  const [priceElection, setPriceElection] = useState<number | null>(null);
   const [soilType, setSoilType] = useState("");
   const [plantingDate, setPlantingDate] = useState("");
   const [harvestDate, setHarvestDate] = useState("");
@@ -145,6 +156,11 @@ export default function EditFarmScreen() {
       setYieldGoal(profile.yieldGoal != null ? String(profile.yieldGoal) : "");
       setCropPrice(profile.cropPrice != null ? String(profile.cropPrice) : "");
       setCostPerAcre(profile.costPerAcre != null ? String(profile.costPerAcre) : "");
+      setAphYield(profile.aphYield != null ? String(profile.aphYield) : "");
+      setInsurancePlanType((profile.insurancePlanType as InsurancePlanType) ?? null);
+      setCoverageLevel(profile.coverageLevel ?? null);
+      setProjectedPrice(profile.projectedPrice != null ? String(profile.projectedPrice) : "");
+      setPriceElection(profile.priceElection ?? null);
       setSoilType(profile.soilType ?? "");
       setPlantingDate(profile.plantingDate ?? "");
       setHarvestDate(profile.harvestDate ?? "");
@@ -166,6 +182,11 @@ export default function EditFarmScreen() {
       yieldGoal !== (profile.yieldGoal != null ? String(profile.yieldGoal) : "") ||
       cropPrice !== (profile.cropPrice != null ? String(profile.cropPrice) : "") ||
       costPerAcre !== (profile.costPerAcre != null ? String(profile.costPerAcre) : "") ||
+      aphYield !== (profile.aphYield != null ? String(profile.aphYield) : "") ||
+      insurancePlanType !== ((profile.insurancePlanType as InsurancePlanType) ?? null) ||
+      coverageLevel !== (profile.coverageLevel ?? null) ||
+      projectedPrice !== (profile.projectedPrice != null ? String(profile.projectedPrice) : "") ||
+      priceElection !== (profile.priceElection ?? null) ||
       soilType !== (profile.soilType ?? "") ||
       plantingDate !== (profile.plantingDate ?? "") ||
       harvestDate !== (profile.harvestDate ?? "") ||
@@ -185,6 +206,11 @@ export default function EditFarmScreen() {
           yieldGoal: yieldGoal ? parseFloat(yieldGoal) : null,
           cropPrice: cropPrice ? parseFloat(cropPrice) : null,
           costPerAcre: costPerAcre ? parseFloat(costPerAcre) : null,
+          aphYield: aphYield ? parseFloat(aphYield) : null,
+          insurancePlanType: insurancePlanType ?? null,
+          coverageLevel: coverageLevel ?? null,
+          projectedPrice: projectedPrice ? parseFloat(projectedPrice) : null,
+          priceElection: priceElection ?? null,
           soilType: soilType.trim() || null,
           plantingDate: plantingDate.trim() || null,
           harvestDate: harvestDate.trim() || null,
@@ -471,6 +497,150 @@ export default function EditFarmScreen() {
             }
             keyboardType="decimal-pad"
           />
+        </View>
+
+        {/* ── Crop Insurance ─────────────────────────────────────────────── */}
+        <View style={{ gap: 16 }}>
+          <View style={{ gap: 2 }}>
+            <Text style={[{ fontSize: 13, fontFamily: "Outfit_700Bold", color: colors.foreground }]}>
+              Crop Insurance (optional)
+            </Text>
+            <Text style={[{ fontSize: 12, fontFamily: "Outfit_400Regular", color: colors.mutedForeground }]}>
+              Federal crop insurance details for indemnity projections.
+            </Text>
+          </View>
+
+          {/* Plan type */}
+          <View>
+            <FieldLabel text="Insurance plan type" />
+            <View style={s.chipRow}>
+              {(["RP", "RPHPE", "YP"] as InsurancePlanType[]).map((plan) => {
+                const selected = insurancePlanType === plan;
+                return (
+                  <Pressable
+                    key={plan}
+                    style={[
+                      s.chip,
+                      {
+                        backgroundColor: selected ? colors.primary + "18" : colors.card,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setInsurancePlanType(selected ? null : plan)}
+                  >
+                    <Text
+                      style={[
+                        s.chipText,
+                        { color: selected ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      {plan}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Coverage level */}
+          <View>
+            <FieldLabel text="Coverage level" />
+            <View style={s.chipRow}>
+              {COVERAGE_LEVELS.map((lvl) => {
+                const selected = coverageLevel === lvl;
+                return (
+                  <Pressable
+                    key={lvl}
+                    style={[
+                      s.chip,
+                      {
+                        backgroundColor: selected ? colors.primary + "18" : colors.card,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setCoverageLevel(selected ? null : lvl)}
+                  >
+                    <Text
+                      style={[
+                        s.chipText,
+                        { color: selected ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      {Math.round(lvl * 100)}%
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* APH yield */}
+          <View>
+            <FieldLabel
+              text={`APH proven yield${cropType && YIELD_PROFILES_PUBLIC[cropType] ? ` · ${YIELD_PROFILES_PUBLIC[cropType].unit}` : " · bu/acre"}`}
+            />
+            <StyledInput
+              value={aphYield}
+              onChangeText={setAphYield}
+              placeholder={
+                cropType && YIELD_PROFILES_PUBLIC[cropType]
+                  ? `e.g. ${YIELD_PROFILES_PUBLIC[cropType].avg} (USDA avg)`
+                  : "e.g. 175"
+              }
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Projected price */}
+          <View>
+            <FieldLabel
+              text={`RMA projected price${cropType && YIELD_PROFILES_PUBLIC[cropType] ? ` · $/${YIELD_PROFILES_PUBLIC[cropType].unit.split("/")[0]}` : " · $/unit"}`}
+            />
+            <StyledInput
+              value={projectedPrice}
+              onChangeText={setProjectedPrice}
+              placeholder={
+                cropType && RMA_PROJECTED_PRICES_2025[cropType]
+                  ? `e.g. ${RMA_PROJECTED_PRICES_2025[cropType].price} (${RMA_PROJECTED_PRICES_2025[cropType].label})`
+                  : "e.g. 4.70"
+              }
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Price election — only relevant for YP */}
+          {(insurancePlanType === "YP" || insurancePlanType == null) && (
+            <View>
+              <FieldLabel text="Price election (YP plans)" />
+              <View style={s.chipRow}>
+                {PRICE_ELECTION_OPTIONS.map((pe) => {
+                  const selected = priceElection === pe;
+                  return (
+                    <Pressable
+                      key={pe}
+                      style={[
+                        s.chip,
+                        {
+                          backgroundColor: selected ? colors.primary + "18" : colors.card,
+                          borderColor: selected ? colors.primary : colors.border,
+                        },
+                      ]}
+                      onPress={() => setPriceElection(selected ? null : pe)}
+                    >
+                      <Text
+                        style={[
+                          s.chipText,
+                          { color: selected ? colors.primary : colors.mutedForeground },
+                        ]}
+                      >
+                        {Math.round(pe * 100)}%
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Soil type chips */}

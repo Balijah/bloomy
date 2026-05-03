@@ -248,6 +248,35 @@ export const GetFarmProfilesResponseItem = zod.object({
     .describe(
       "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
     ),
+  aphYield: zod
+    .number()
+    .nullish()
+    .describe(
+      "Actual Production History proven yield (average of 4-10 prior harvests)",
+    ),
+  insurancePlanType: zod
+    .union([
+      zod.literal("RP"),
+      zod.literal("RPHPE"),
+      zod.literal("YP"),
+      zod.literal(null),
+    ])
+    .nullish()
+    .describe(
+      "Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)",
+    ),
+  coverageLevel: zod
+    .number()
+    .nullish()
+    .describe("Insurance coverage level as decimal (0.50 to 0.95)"),
+  projectedPrice: zod
+    .number()
+    .nullish()
+    .describe("RMA projected price for the crop year ($\/unit)"),
+  priceElection: zod
+    .number()
+    .nullish()
+    .describe("Price election as decimal (0.85 to 1.00 of projected price)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -287,6 +316,27 @@ export const CreateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Estimated total production cost per acre"),
+  aphYield: zod.number().nullish().describe("APH proven yield"),
+  insurancePlanType: zod
+    .union([
+      zod.literal("RP"),
+      zod.literal("RPHPE"),
+      zod.literal("YP"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  coverageLevel: zod
+    .number()
+    .nullish()
+    .describe("Insurance coverage level as decimal (0.50 to 0.95)"),
+  projectedPrice: zod
+    .number()
+    .nullish()
+    .describe("RMA projected price for the crop year"),
+  priceElection: zod
+    .number()
+    .nullish()
+    .describe("Price election as decimal (0.85 to 1.00)"),
   notes: zod.string().nullish(),
 });
 
@@ -336,6 +386,35 @@ export const GetFarmProfileResponse = zod.object({
     .describe(
       "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
     ),
+  aphYield: zod
+    .number()
+    .nullish()
+    .describe(
+      "Actual Production History proven yield (average of 4-10 prior harvests)",
+    ),
+  insurancePlanType: zod
+    .union([
+      zod.literal("RP"),
+      zod.literal("RPHPE"),
+      zod.literal("YP"),
+      zod.literal(null),
+    ])
+    .nullish()
+    .describe(
+      "Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)",
+    ),
+  coverageLevel: zod
+    .number()
+    .nullish()
+    .describe("Insurance coverage level as decimal (0.50 to 0.95)"),
+  projectedPrice: zod
+    .number()
+    .nullish()
+    .describe("RMA projected price for the crop year ($\/unit)"),
+  priceElection: zod
+    .number()
+    .nullish()
+    .describe("Price election as decimal (0.85 to 1.00 of projected price)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -379,6 +458,27 @@ export const UpdateFarmProfileBody = zod.object({
     .number()
     .nullish()
     .describe("Estimated total production cost per acre"),
+  aphYield: zod.number().nullish().describe("APH proven yield"),
+  insurancePlanType: zod
+    .union([
+      zod.literal("RP"),
+      zod.literal("RPHPE"),
+      zod.literal("YP"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  coverageLevel: zod
+    .number()
+    .nullish()
+    .describe("Insurance coverage level as decimal (0.50 to 0.95)"),
+  projectedPrice: zod
+    .number()
+    .nullish()
+    .describe("RMA projected price for the crop year"),
+  priceElection: zod
+    .number()
+    .nullish()
+    .describe("Price election as decimal (0.85 to 1.00)"),
   notes: zod.string().nullish(),
 });
 
@@ -421,6 +521,35 @@ export const UpdateFarmProfileResponse = zod.object({
     .describe(
       "Estimated total production cost per acre (seed, fertilizer, labor, etc.)",
     ),
+  aphYield: zod
+    .number()
+    .nullish()
+    .describe(
+      "Actual Production History proven yield (average of 4-10 prior harvests)",
+    ),
+  insurancePlanType: zod
+    .union([
+      zod.literal("RP"),
+      zod.literal("RPHPE"),
+      zod.literal("YP"),
+      zod.literal(null),
+    ])
+    .nullish()
+    .describe(
+      "Federal crop insurance plan type (Revenue Protection, RP with Harvest Price Exclusion, or Yield Protection)",
+    ),
+  coverageLevel: zod
+    .number()
+    .nullish()
+    .describe("Insurance coverage level as decimal (0.50 to 0.95)"),
+  projectedPrice: zod
+    .number()
+    .nullish()
+    .describe("RMA projected price for the crop year ($\/unit)"),
+  priceElection: zod
+    .number()
+    .nullish()
+    .describe("Price election as decimal (0.85 to 1.00 of projected price)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });

@@ -59,6 +59,11 @@ router.post("/agriculture/farm-profiles", requireAuth, async (req, res): Promise
     yieldGoal: parsed.data.yieldGoal ?? null,
     cropPrice: parsed.data.cropPrice ?? null,
     costPerAcre: parsed.data.costPerAcre ?? null,
+    aphYield: parsed.data.aphYield ?? null,
+    insurancePlanType: parsed.data.insurancePlanType ?? null,
+    coverageLevel: parsed.data.coverageLevel ?? null,
+    projectedPrice: parsed.data.projectedPrice ?? null,
+    priceElection: parsed.data.priceElection ?? null,
     notes: parsed.data.notes ?? null,
   }).returning();
 
@@ -106,6 +111,11 @@ router.patch("/agriculture/farm-profiles/:id", requireAuth, async (req, res): Pr
   if (parsed.data.yieldGoal !== undefined) updateData.yieldGoal = parsed.data.yieldGoal ?? null;
   if (parsed.data.cropPrice !== undefined) updateData.cropPrice = parsed.data.cropPrice ?? null;
   if (parsed.data.costPerAcre !== undefined) updateData.costPerAcre = parsed.data.costPerAcre ?? null;
+  if (parsed.data.aphYield !== undefined) updateData.aphYield = parsed.data.aphYield ?? null;
+  if (parsed.data.insurancePlanType !== undefined) updateData.insurancePlanType = parsed.data.insurancePlanType ?? null;
+  if (parsed.data.coverageLevel !== undefined) updateData.coverageLevel = parsed.data.coverageLevel ?? null;
+  if (parsed.data.projectedPrice !== undefined) updateData.projectedPrice = parsed.data.projectedPrice ?? null;
+  if (parsed.data.priceElection !== undefined) updateData.priceElection = parsed.data.priceElection ?? null;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
 
   const [updated] = await db.update(farmProfilesTable)
