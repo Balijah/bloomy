@@ -1016,6 +1016,26 @@ export const GetAgricultureInsightsResponse = zod.object({
 });
 
 /**
+ * @summary Get farms with ideal/good spray conditions in the next 48 hours
+ */
+export const GetSprayWindowAlertsResponse = zod.object({
+  upcomingWindows: zod.array(
+    zod.object({
+      farmId: zod.number(),
+      farmName: zod.string(),
+      cropType: zod.string(),
+      date: zod.string(),
+      dayLabel: zod.string(),
+      rating: zod.enum(["ideal", "good"]),
+      windSpeed: zod.number(),
+      tempMax: zod.number(),
+      tempMin: zod.number(),
+      precipProbability: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary List alerts for current user
  */
 export const GetAlertsQueryParams = zod.object({

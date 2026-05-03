@@ -714,6 +714,21 @@ paths:
         "404":
           description: Not found
 
+  /agriculture/spray-window-alerts:
+    get:
+      operationId: getSprayWindowAlerts
+      tags: [agriculture]
+      summary: Get farms with ideal/good spray conditions in the next 48 hours
+      responses:
+        "200":
+          description: Upcoming spray windows across all farm profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SprayWindowAlertsResponse"
+        "401":
+          description: Unauthorized
+
   /alerts:
     get:
       operationId: getAlerts
@@ -1986,6 +2001,52 @@ components:
       required:
         - category
         - item
+
+    SprayWindowEntry:
+      type: object
+      properties:
+        farmId:
+          type: integer
+        farmName:
+          type: string
+        cropType:
+          type: string
+        date:
+          type: string
+        dayLabel:
+          type: string
+        rating:
+          type: string
+          enum: [ideal, good]
+        windSpeed:
+          type: number
+        tempMax:
+          type: number
+        tempMin:
+          type: number
+        precipProbability:
+          type: number
+      required:
+        - farmId
+        - farmName
+        - cropType
+        - date
+        - dayLabel
+        - rating
+        - windSpeed
+        - tempMax
+        - tempMin
+        - precipProbability
+
+    SprayWindowAlertsResponse:
+      type: object
+      properties:
+        upcomingWindows:
+          type: array
+          items:
+            $ref: "#/components/schemas/SprayWindowEntry"
+      required:
+        - upcomingWindows
 
     UpdateInputCostBody:
       type: object

@@ -2,9 +2,11 @@ import {
   useGetFarmProfiles,
   useGetLocations,
   useDeleteFarmProfile,
+  useGetSprayWindowAlerts,
   getGetFarmProfilesQueryKey,
   getGetAgricultureInsightsQueryKey,
   type AgricultureInsights,
+  type SprayWindowEntry,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -127,6 +129,45 @@ const ds = StyleSheet.create({
 
 // ─── Swipeable farm card ──────────────────────────────────────────────────────
 
+// ─── Spray window badge ───────────────────────────────────────────────────────
+
+const SPRAY_RATING_COLOR: Record<string, string> = {
+  ideal: "#2D7A3A",
+  good:  "#4D8A5E",
+};
+
+function SprayBadge({ window: w }: { window: SprayWindowEntry }) {
+  const color = SPRAY_RATING_COLOR[w.rating] ?? "#4D8A5E";
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: color + "15",
+        borderWidth: 1,
+        borderColor: color + "40",
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
+      <Text
+        style={{
+          fontSize: 12,
+          fontFamily: "Outfit_600SemiBold",
+          color,
+        }}
+      >
+        {w.rating === "ideal" ? "Ideal" : "Good"} spray {w.dayLabel === "Today" || w.dayLabel === "Tomorrow" ? w.dayLabel.toLowerCase() : w.dayLabel}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Swipeable farm card ──────────────────────────────────────────────────────
+
 interface FarmCardProps {
   item: {
     id: number;
@@ -138,10 +179,11 @@ interface FarmCardProps {
   };
   locationName?: string;
   soilScore?: SoilHealthResult | null;
+  sprayWindow?: SprayWindowEntry | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -185,7 +227,7 @@ function SwipeableFarmCard({ item, locationName, soilScore, onDelete }: FarmCard
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow) && (
         <View style={s(colors).cardMeta}>
           {item.acreage && (
             <View style={s(colors).metaChip}>
@@ -225,6 +267,7 @@ function SwipeableFarmCard({ item, locationName, soilScore, onDelete }: FarmCard
               </Text>
             </View>
           )}
+          {sprayWindow && <SprayBadge window={sprayWindow} />}
         </View>
       )}
     </Pressable>
@@ -266,6 +309,9 @@ export default function AgricultureScreen() {
 
   const { data: profiles, isLoading, refetch, isRefetching } = useGetFarmProfiles();
   const { data: locations } = useGetLocations();
+  const { data: sprayAlerts } = useGetSprayWindowAlerts({
+    query: { queryKey: ["sprayWindowAlerts"], staleTime: 10 * 60 * 1000, retry: false },
+  });
   const deleteFarmProfile = useDeleteFarmProfile();
 
   const locationsMap = React.useMemo(() => {
@@ -273,6 +319,22 @@ export default function AgricultureScreen() {
     locations?.forEach((l) => (map[l.id] = l.name));
     return map;
   }, [locations]);
+
+  // Build a map of farmId → best upcoming spray window (ideal preferred over good,
+  // today preferred over tomorrow). One entry per farm.
+  const sprayWindowMap = React.useMemo(() => {
+    const map: Record<number, SprayWindowEntry> = {};
+    const windows = sprayAlerts?.upcomingWindows ?? [];
+    // Sort: ideal before good, then by date ascending
+    const sorted = [...windows].sort((a, b) => {
+      if (a.rating === b.rating) return a.date.localeCompare(b.date);
+      return a.rating === "ideal" ? -1 : 1;
+    });
+    sorted.forEach((w) => {
+      if (!map[w.farmId]) map[w.farmId] = w;
+    });
+    return map;
+  }, [sprayAlerts]);
 
   // Read cached agriculture insights (populated when user visits farm detail screens)
   // and compute the soil health score client-side — zero extra API calls.
@@ -404,6 +466,7 @@ export default function AgricultureScreen() {
             item={item}
             locationName={locationsMap[item.locationId]}
             soilScore={soilScores[item.id]}
+            sprayWindow={sprayWindowMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}

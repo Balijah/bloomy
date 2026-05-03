@@ -43,6 +43,7 @@ import type {
   Location,
   PortalSessionResponse,
   RegisterPushTokenBody,
+  SprayWindowAlertsResponse,
   Subscription,
   UnregisterPushTokenBody,
   UpdateAlertPreferencesBody,
@@ -2544,6 +2545,81 @@ export function useGetAgricultureInsights<
     farmProfileId,
     options,
   );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get farms with ideal/good spray conditions in the next 48 hours
+ */
+export const getGetSprayWindowAlertsUrl = () => {
+  return `/api/agriculture/spray-window-alerts`;
+};
+
+export const getSprayWindowAlerts = async (
+  options?: RequestInit,
+): Promise<SprayWindowAlertsResponse> => {
+  return customFetch<SprayWindowAlertsResponse>(getGetSprayWindowAlertsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSprayWindowAlertsQueryKey = () => {
+  return [`/api/agriculture/spray-window-alerts`] as const;
+};
+
+export const getGetSprayWindowAlertsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSprayWindowAlerts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSprayWindowAlerts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSprayWindowAlertsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSprayWindowAlerts>>
+  > = ({ signal }) => getSprayWindowAlerts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSprayWindowAlerts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSprayWindowAlertsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSprayWindowAlerts>>
+>;
+export type GetSprayWindowAlertsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get farms with ideal/good spray conditions in the next 48 hours
+ */
+
+export function useGetSprayWindowAlerts<
+  TData = Awaited<ReturnType<typeof getSprayWindowAlerts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSprayWindowAlerts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSprayWindowAlertsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

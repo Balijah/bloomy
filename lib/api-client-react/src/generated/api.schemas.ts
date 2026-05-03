@@ -940,6 +940,31 @@ export interface CreateInputCostBody {
   notes?: string | null;
 }
 
+export type SprayWindowEntryRating =
+  (typeof SprayWindowEntryRating)[keyof typeof SprayWindowEntryRating];
+
+export const SprayWindowEntryRating = {
+  ideal: "ideal",
+  good: "good",
+} as const;
+
+export interface SprayWindowEntry {
+  farmId: number;
+  farmName: string;
+  cropType: string;
+  date: string;
+  dayLabel: string;
+  rating: SprayWindowEntryRating;
+  windSpeed: number;
+  tempMax: number;
+  tempMin: number;
+  precipProbability: number;
+}
+
+export interface SprayWindowAlertsResponse {
+  upcomingWindows: SprayWindowEntry[];
+}
+
 export type UpdateInputCostBodyCategory =
   (typeof UpdateInputCostBodyCategory)[keyof typeof UpdateInputCostBodyCategory];
 
