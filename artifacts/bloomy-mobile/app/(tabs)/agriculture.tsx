@@ -36,6 +36,7 @@ import ReanimatedSwipeable, {
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useColors } from "@/hooks/useColors";
 import { computeSoilHealth, type SoilHealthResult } from "@/lib/soilHealth";
+import { getCurrentStage } from "@/lib/cropStages";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,53 @@ function SprayBadge({ window: w }: { window: SprayWindowEntry }) {
   );
 }
 
+// ─── Growth stage badge ───────────────────────────────────────────────────────
+
+interface StageInfo {
+  stageName: string;
+  stageIndex: number;
+  totalStages: number;
+}
+
+function stageBadgeColor(
+  stageIndex: number,
+  totalStages: number,
+  primaryColor: string
+): string {
+  // Final stage (harvest/maturity) → warm amber; otherwise use primary green
+  if (stageIndex === totalStages - 1) return "#B86A1A";
+  return primaryColor;
+}
+
+function StageBadge({ info }: { info: StageInfo }) {
+  const colors = useColors();
+  const color = stageBadgeColor(info.stageIndex, info.totalStages, colors.primary);
+  // First word of stage name, truncated to 11 chars
+  const word = info.stageName.split(/[\s&\/]/)[0];
+  const label = word.length > 11 ? word.slice(0, 10) + "." : word;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: color + "15",
+        borderWidth: 1,
+        borderColor: color + "40",
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
+      <Text style={{ fontSize: 12, fontFamily: "Outfit_600SemiBold", color }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Swipeable farm card ──────────────────────────────────────────────────────
 
 interface FarmCardProps {
@@ -180,10 +228,11 @@ interface FarmCardProps {
   locationName?: string;
   soilScore?: SoilHealthResult | null;
   sprayWindow?: SprayWindowEntry | null;
+  stageInfo?: StageInfo | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -227,7 +276,7 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, onDelet
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore || sprayWindow) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo) && (
         <View style={s(colors).cardMeta}>
           {item.acreage && (
             <View style={s(colors).metaChip}>
@@ -267,6 +316,7 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, onDelet
               </Text>
             </View>
           )}
+          {stageInfo && <StageBadge info={stageInfo} />}
           {sprayWindow && <SprayBadge window={sprayWindow} />}
         </View>
       )}
@@ -335,6 +385,27 @@ export default function AgricultureScreen() {
     });
     return map;
   }, [sprayAlerts]);
+
+  // Read cached agriculture insights and compute the current growth stage client-side.
+  // Only shows for farms whose detail screen has been visited at least once (cache hit).
+  const stageMap = React.useMemo(() => {
+    const map: Record<number, StageInfo | null> = {};
+    profiles?.forEach((p) => {
+      const key = getGetAgricultureInsightsQueryKey(p.id);
+      const cached = queryClient.getQueryData<AgricultureInsights>(key);
+      if (cached?.accumulatedGDD != null) {
+        const result = getCurrentStage(p.cropType, cached.accumulatedGDD);
+        map[p.id] = {
+          stageName: result.current.name,
+          stageIndex: result.currentIndex,
+          totalStages: result.stages.length,
+        };
+      } else {
+        map[p.id] = null;
+      }
+    });
+    return map;
+  }, [profiles, queryClient]);
 
   // Read cached agriculture insights (populated when user visits farm detail screens)
   // and compute the soil health score client-side — zero extra API calls.
@@ -467,6 +538,7 @@ export default function AgricultureScreen() {
             locationName={locationsMap[item.locationId]}
             soilScore={soilScores[item.id]}
             sprayWindow={sprayWindowMap[item.id] ?? null}
+            stageInfo={stageMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}
