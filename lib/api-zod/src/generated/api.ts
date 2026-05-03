@@ -766,6 +766,157 @@ export const DeleteYieldRecordParams = zod.object({
 });
 
 /**
+ * @summary List input cost line items for a farm profile
+ */
+export const GetInputCostsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInputCostsResponseItem = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  category: zod.enum([
+    "seed",
+    "fertilizer",
+    "herbicide",
+    "pesticide",
+    "fuel",
+    "labor",
+    "custom_operation",
+    "equipment",
+    "irrigation",
+    "drying",
+    "other",
+  ]),
+  item: zod
+    .string()
+    .describe(
+      'Description of the input (e.g. \"Anhydrous ammonia\", \"Roundup\")',
+    ),
+  costPerAcre: zod.number().nullish().describe("Cost per acre for this input"),
+  totalCost: zod
+    .number()
+    .nullish()
+    .describe("Total cost across all acres (alternative to costPerAcre)"),
+  acresApplied: zod
+    .number()
+    .nullish()
+    .describe("Number of acres this input was applied to"),
+  date: zod.coerce.date().nullish().describe("Date the expense was incurred"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetInputCostsResponse = zod.array(GetInputCostsResponseItem);
+
+/**
+ * @summary Add an input cost line item to a farm profile
+ */
+export const CreateInputCostParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateInputCostBody = zod.object({
+  category: zod.enum([
+    "seed",
+    "fertilizer",
+    "herbicide",
+    "pesticide",
+    "fuel",
+    "labor",
+    "custom_operation",
+    "equipment",
+    "irrigation",
+    "drying",
+    "other",
+  ]),
+  item: zod.string(),
+  costPerAcre: zod.number().nullish(),
+  totalCost: zod.number().nullish(),
+  acresApplied: zod.number().nullish(),
+  date: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Update an input cost line item
+ */
+export const UpdateInputCostParams = zod.object({
+  id: zod.coerce.number(),
+  costId: zod.coerce.number(),
+});
+
+export const UpdateInputCostBody = zod.object({
+  category: zod
+    .enum([
+      "seed",
+      "fertilizer",
+      "herbicide",
+      "pesticide",
+      "fuel",
+      "labor",
+      "custom_operation",
+      "equipment",
+      "irrigation",
+      "drying",
+      "other",
+    ])
+    .optional(),
+  item: zod.string().optional(),
+  costPerAcre: zod.number().nullish(),
+  totalCost: zod.number().nullish(),
+  acresApplied: zod.number().nullish(),
+  date: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateInputCostResponse = zod.object({
+  id: zod.number(),
+  farmProfileId: zod.number(),
+  userId: zod.number(),
+  category: zod.enum([
+    "seed",
+    "fertilizer",
+    "herbicide",
+    "pesticide",
+    "fuel",
+    "labor",
+    "custom_operation",
+    "equipment",
+    "irrigation",
+    "drying",
+    "other",
+  ]),
+  item: zod
+    .string()
+    .describe(
+      'Description of the input (e.g. \"Anhydrous ammonia\", \"Roundup\")',
+    ),
+  costPerAcre: zod.number().nullish().describe("Cost per acre for this input"),
+  totalCost: zod
+    .number()
+    .nullish()
+    .describe("Total cost across all acres (alternative to costPerAcre)"),
+  acresApplied: zod
+    .number()
+    .nullish()
+    .describe("Number of acres this input was applied to"),
+  date: zod.coerce.date().nullish().describe("Date the expense was incurred"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an input cost line item
+ */
+export const DeleteInputCostParams = zod.object({
+  id: zod.coerce.number(),
+  costId: zod.coerce.number(),
+});
+
+/**
  * @summary Get crop-specific weather insights for a farm profile
  */
 export const GetAgricultureInsightsParams = zod.object({

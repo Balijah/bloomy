@@ -581,6 +581,118 @@ paths:
         "404":
           description: Record not found
 
+  /agriculture/farm-profiles/{id}/input-costs:
+    get:
+      operationId: getInputCosts
+      tags: [agriculture]
+      summary: List input cost line items for a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of input cost records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InputCost"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+    post:
+      operationId: createInputCost
+      tags: [agriculture]
+      summary: Add an input cost line item to a farm profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInputCostBody"
+      responses:
+        "201":
+          description: Created input cost record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InputCost"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Farm profile not found
+
+  /agriculture/farm-profiles/{id}/input-costs/{costId}:
+    put:
+      operationId: updateInputCost
+      tags: [agriculture]
+      summary: Update an input cost line item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: costId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInputCostBody"
+      responses:
+        "200":
+          description: Updated input cost record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InputCost"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Record not found
+    delete:
+      operationId: deleteInputCost
+      tags: [agriculture]
+      summary: Delete an input cost line item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: costId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Record not found
+
   /agriculture/insights/{farmProfileId}:
     get:
       operationId: getAgricultureInsights
@@ -1804,5 +1916,93 @@ components:
       properties:
         actualYield:
           type: number
+        notes:
+          type: ["string", "null"]
+
+    InputCost:
+      type: object
+      properties:
+        id:
+          type: integer
+        farmProfileId:
+          type: integer
+        userId:
+          type: integer
+        category:
+          type: string
+          enum: [seed, fertilizer, herbicide, pesticide, fuel, labor, custom_operation, equipment, irrigation, drying, other]
+        item:
+          type: string
+          description: Description of the input (e.g. "Anhydrous ammonia", "Roundup")
+        costPerAcre:
+          type: ["number", "null"]
+          description: Cost per acre for this input
+        totalCost:
+          type: ["number", "null"]
+          description: Total cost across all acres (alternative to costPerAcre)
+        acresApplied:
+          type: ["number", "null"]
+          description: Number of acres this input was applied to
+        date:
+          type: ["string", "null"]
+          format: date
+          description: Date the expense was incurred
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - farmProfileId
+        - userId
+        - category
+        - item
+        - createdAt
+        - updatedAt
+
+    CreateInputCostBody:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [seed, fertilizer, herbicide, pesticide, fuel, labor, custom_operation, equipment, irrigation, drying, other]
+        item:
+          type: string
+        costPerAcre:
+          type: ["number", "null"]
+        totalCost:
+          type: ["number", "null"]
+        acresApplied:
+          type: ["number", "null"]
+        date:
+          type: ["string", "null"]
+          format: date
+        notes:
+          type: ["string", "null"]
+      required:
+        - category
+        - item
+
+    UpdateInputCostBody:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [seed, fertilizer, herbicide, pesticide, fuel, labor, custom_operation, equipment, irrigation, drying, other]
+        item:
+          type: string
+        costPerAcre:
+          type: ["number", "null"]
+        totalCost:
+          type: ["number", "null"]
+        acresApplied:
+          type: ["number", "null"]
+        date:
+          type: ["string", "null"]
+          format: date
         notes:
           type: ["string", "null"]

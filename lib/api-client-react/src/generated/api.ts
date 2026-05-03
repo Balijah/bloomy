@@ -24,6 +24,7 @@ import type {
   CreateCheckoutSessionBody,
   CreateFarmProfileBody,
   CreateFieldNoteBody,
+  CreateInputCostBody,
   CreateLocationBody,
   CreateYieldRecordBody,
   CurrentWeather,
@@ -38,6 +39,7 @@ import type {
   GetHourlyForecastParams,
   HealthStatus,
   HourlyForecast,
+  InputCost,
   Location,
   PortalSessionResponse,
   RegisterPushTokenBody,
@@ -46,6 +48,7 @@ import type {
   UpdateAlertPreferencesBody,
   UpdateFarmProfileBody,
   UpdateFieldNoteBody,
+  UpdateInputCostBody,
   UpdateLocationBody,
   UpdateUserProfileBody,
   UpdateYieldRecordBody,
@@ -2105,6 +2108,353 @@ export const useDeleteYieldRecord = <
   TContext
 > => {
   return useMutation(getDeleteYieldRecordMutationOptions(options));
+};
+
+/**
+ * @summary List input cost line items for a farm profile
+ */
+export const getGetInputCostsUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/input-costs`;
+};
+
+export const getInputCosts = async (
+  id: number,
+  options?: RequestInit,
+): Promise<InputCost[]> => {
+  return customFetch<InputCost[]>(getGetInputCostsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInputCostsQueryKey = (id: number) => {
+  return [`/api/agriculture/farm-profiles/${id}/input-costs`] as const;
+};
+
+export const getGetInputCostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInputCosts>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInputCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInputCostsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInputCosts>>> = ({
+    signal,
+  }) => getInputCosts(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInputCosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetInputCostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInputCosts>>
+>;
+export type GetInputCostsQueryError = ErrorType<void>;
+
+/**
+ * @summary List input cost line items for a farm profile
+ */
+
+export function useGetInputCosts<
+  TData = Awaited<ReturnType<typeof getInputCosts>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInputCosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetInputCostsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add an input cost line item to a farm profile
+ */
+export const getCreateInputCostUrl = (id: number) => {
+  return `/api/agriculture/farm-profiles/${id}/input-costs`;
+};
+
+export const createInputCost = async (
+  id: number,
+  createInputCostBody: CreateInputCostBody,
+  options?: RequestInit,
+): Promise<InputCost> => {
+  return customFetch<InputCost>(getCreateInputCostUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createInputCostBody),
+  });
+};
+
+export const getCreateInputCostMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInputCost>>,
+    TError,
+    { id: number; data: BodyType<CreateInputCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInputCost>>,
+  TError,
+  { id: number; data: BodyType<CreateInputCostBody> },
+  TContext
+> => {
+  const mutationKey = ["createInputCost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInputCost>>,
+    { id: number; data: BodyType<CreateInputCostBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createInputCost(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateInputCostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInputCost>>
+>;
+export type CreateInputCostMutationBody = BodyType<CreateInputCostBody>;
+export type CreateInputCostMutationError = ErrorType<void>;
+
+/**
+ * @summary Add an input cost line item to a farm profile
+ */
+export const useCreateInputCost = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInputCost>>,
+    TError,
+    { id: number; data: BodyType<CreateInputCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createInputCost>>,
+  TError,
+  { id: number; data: BodyType<CreateInputCostBody> },
+  TContext
+> => {
+  return useMutation(getCreateInputCostMutationOptions(options));
+};
+
+/**
+ * @summary Update an input cost line item
+ */
+export const getUpdateInputCostUrl = (id: number, costId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/input-costs/${costId}`;
+};
+
+export const updateInputCost = async (
+  id: number,
+  costId: number,
+  updateInputCostBody: UpdateInputCostBody,
+  options?: RequestInit,
+): Promise<InputCost> => {
+  return customFetch<InputCost>(getUpdateInputCostUrl(id, costId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateInputCostBody),
+  });
+};
+
+export const getUpdateInputCostMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInputCost>>,
+    TError,
+    { id: number; costId: number; data: BodyType<UpdateInputCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInputCost>>,
+  TError,
+  { id: number; costId: number; data: BodyType<UpdateInputCostBody> },
+  TContext
+> => {
+  const mutationKey = ["updateInputCost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInputCost>>,
+    { id: number; costId: number; data: BodyType<UpdateInputCostBody> }
+  > = (props) => {
+    const { id, costId, data } = props ?? {};
+
+    return updateInputCost(id, costId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateInputCostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInputCost>>
+>;
+export type UpdateInputCostMutationBody = BodyType<UpdateInputCostBody>;
+export type UpdateInputCostMutationError = ErrorType<void>;
+
+/**
+ * @summary Update an input cost line item
+ */
+export const useUpdateInputCost = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInputCost>>,
+    TError,
+    { id: number; costId: number; data: BodyType<UpdateInputCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateInputCost>>,
+  TError,
+  { id: number; costId: number; data: BodyType<UpdateInputCostBody> },
+  TContext
+> => {
+  return useMutation(getUpdateInputCostMutationOptions(options));
+};
+
+/**
+ * @summary Delete an input cost line item
+ */
+export const getDeleteInputCostUrl = (id: number, costId: number) => {
+  return `/api/agriculture/farm-profiles/${id}/input-costs/${costId}`;
+};
+
+export const deleteInputCost = async (
+  id: number,
+  costId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteInputCostUrl(id, costId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteInputCostMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInputCost>>,
+    TError,
+    { id: number; costId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteInputCost>>,
+  TError,
+  { id: number; costId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteInputCost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteInputCost>>,
+    { id: number; costId: number }
+  > = (props) => {
+    const { id, costId } = props ?? {};
+
+    return deleteInputCost(id, costId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteInputCostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteInputCost>>
+>;
+
+export type DeleteInputCostMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete an input cost line item
+ */
+export const useDeleteInputCost = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInputCost>>,
+    TError,
+    { id: number; costId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteInputCost>>,
+  TError,
+  { id: number; costId: number },
+  TContext
+> => {
+  return useMutation(getDeleteInputCostMutationOptions(options));
 };
 
 /**

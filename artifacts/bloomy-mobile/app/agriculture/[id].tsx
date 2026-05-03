@@ -45,6 +45,7 @@ import PlantingDateCard from "@/components/PlantingDateCard";
 import YieldGoalCard from "@/components/YieldGoalCard";
 import YieldHistoryCard from "@/components/YieldHistoryCard";
 import InsuranceCard from "@/components/InsuranceCard";
+import InputCostCard from "@/components/InputCostCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { generateFarmReportHtml } from "@/lib/farmReport";
@@ -462,6 +463,16 @@ export default function AgricultureDetailScreen() {
           farmProfileId={farmId}
           cropType={profile.cropType}
           yieldGoal={profile.yieldGoal}
+        />
+      </View>
+
+      {/* Input Cost Tracker */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Input Costs</Text>
+        <InputCostCard
+          farmProfileId={farmId}
+          farmAcreage={profile.acreage}
+          estimateCostPerAcre={profile.costPerAcre}
         />
       </View>
 

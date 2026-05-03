@@ -858,6 +858,120 @@ export interface UpdateYieldRecordBody {
   notes?: string | null;
 }
 
+export type InputCostCategory =
+  (typeof InputCostCategory)[keyof typeof InputCostCategory];
+
+export const InputCostCategory = {
+  seed: "seed",
+  fertilizer: "fertilizer",
+  herbicide: "herbicide",
+  pesticide: "pesticide",
+  fuel: "fuel",
+  labor: "labor",
+  custom_operation: "custom_operation",
+  equipment: "equipment",
+  irrigation: "irrigation",
+  drying: "drying",
+  other: "other",
+} as const;
+
+export interface InputCost {
+  id: number;
+  farmProfileId: number;
+  userId: number;
+  category: InputCostCategory;
+  /** Description of the input (e.g. "Anhydrous ammonia", "Roundup") */
+  item: string;
+  /**
+   * Cost per acre for this input
+   * @nullable
+   */
+  costPerAcre?: number | null;
+  /**
+   * Total cost across all acres (alternative to costPerAcre)
+   * @nullable
+   */
+  totalCost?: number | null;
+  /**
+   * Number of acres this input was applied to
+   * @nullable
+   */
+  acresApplied?: number | null;
+  /**
+   * Date the expense was incurred
+   * @nullable
+   */
+  date?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateInputCostBodyCategory =
+  (typeof CreateInputCostBodyCategory)[keyof typeof CreateInputCostBodyCategory];
+
+export const CreateInputCostBodyCategory = {
+  seed: "seed",
+  fertilizer: "fertilizer",
+  herbicide: "herbicide",
+  pesticide: "pesticide",
+  fuel: "fuel",
+  labor: "labor",
+  custom_operation: "custom_operation",
+  equipment: "equipment",
+  irrigation: "irrigation",
+  drying: "drying",
+  other: "other",
+} as const;
+
+export interface CreateInputCostBody {
+  category: CreateInputCostBodyCategory;
+  item: string;
+  /** @nullable */
+  costPerAcre?: number | null;
+  /** @nullable */
+  totalCost?: number | null;
+  /** @nullable */
+  acresApplied?: number | null;
+  /** @nullable */
+  date?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type UpdateInputCostBodyCategory =
+  (typeof UpdateInputCostBodyCategory)[keyof typeof UpdateInputCostBodyCategory];
+
+export const UpdateInputCostBodyCategory = {
+  seed: "seed",
+  fertilizer: "fertilizer",
+  herbicide: "herbicide",
+  pesticide: "pesticide",
+  fuel: "fuel",
+  labor: "labor",
+  custom_operation: "custom_operation",
+  equipment: "equipment",
+  irrigation: "irrigation",
+  drying: "drying",
+  other: "other",
+} as const;
+
+export interface UpdateInputCostBody {
+  category?: UpdateInputCostBodyCategory;
+  item?: string;
+  /** @nullable */
+  costPerAcre?: number | null;
+  /** @nullable */
+  totalCost?: number | null;
+  /** @nullable */
+  acresApplied?: number | null;
+  /** @nullable */
+  date?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export type GetCurrentWeatherParams = {
   lat: number;
   lng: number;
