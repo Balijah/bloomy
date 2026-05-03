@@ -5,6 +5,7 @@
  * Metro picks this file on iOS/Android; LocationPicker.web.tsx is used on web.
  */
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as ExpoLocation from "expo-location";
 import React, { useRef, useState } from "react";
 import {
@@ -15,8 +16,14 @@ import {
   Text,
   View,
 } from "react-native";
-import MapView, { Region } from "react-native-maps";
 import { useColors } from "@/hooks/useColors";
+
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 
 const US_CENTER: Region = {
   latitude: 39.5,
@@ -32,8 +39,9 @@ interface Props {
 
 export default function LocationPicker({ initialCoords, onCoordsChange }: Props) {
   const colors = useColors();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const [locating, setLocating] = useState(false);
+  const isExpoGo = Constants.appOwnership === "expo";
 
   const initial: Region = initialCoords
     ? {
@@ -85,17 +93,36 @@ export default function LocationPicker({ initialCoords, onCoordsChange }: Props)
     }
   }
 
+  if (isExpoGo) {
+    return (
+      <View style={s.wrapper}>
+        <View style={[s.fallback, { borderColor: colors.border }]}>
+          <View style={[s.fallbackHeader, { backgroundColor: colors.muted }]}>
+            <Ionicons name="map-outline" size={18} color={colors.primary} />
+            <Text style={[s.fallbackTitle, { color: colors.foreground }]}>
+              Map picker unavailable in Expo Go
+            </Text>
+          </View>
+          <Text style={[s.fallbackText, { color: colors.mutedForeground }]}>
+            Open a development build to choose coordinates on the map.
+          </Text>
+        </View>
+
+        <View style={[s.coordBadge, { backgroundColor: "rgba(0,0,0,0.55)" }]}>
+          <Ionicons name="location-outline" size={12} color="#fff" />
+          <Text style={s.coordText}>
+            {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.wrapper}>
-      <MapView
+      <View
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-        initialRegion={initial}
-        onRegionChangeComplete={handleRegionChangeComplete}
-        showsUserLocation
-        showsMyLocationButton={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
       />
 
       {/* Fixed crosshair pin at centre */}
@@ -142,6 +169,32 @@ const s = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
+  },
+  fallback: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    padding: 14,
+    justifyContent: "center",
+    gap: 10,
+  },
+  fallbackHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  fallbackTitle: {
+    fontSize: 14,
+    fontFamily: "Outfit_600SemiBold",
+  },
+  fallbackText: {
+    fontSize: 13,
+    fontFamily: "Outfit_400Regular",
+    lineHeight: 19,
   },
   crosshairWrapper: {
     position: "absolute",
