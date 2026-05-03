@@ -38,7 +38,18 @@ export default function SignInScreen() {
   const canSubmit = isLoaded && !loading && email.trim().length > 0 && password.length > 0;
 
   async function handleSignIn() {
-    if (!signIn || !isLoaded) return;
+    if (!signIn) {
+      setError("Authentication is still loading. Please try again in a moment.");
+      return;
+    }
+    if (!isLoaded) {
+      setError("Authentication is still loading. Please try again in a moment.");
+      return;
+    }
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -56,7 +67,18 @@ export default function SignInScreen() {
   }
 
   async function handleSignUp() {
-    if (!signUp || !isLoaded) return;
+    if (!signUp) {
+      setError("Authentication is still loading. Please try again in a moment.");
+      return;
+    }
+    if (!isLoaded) {
+      setError("Authentication is still loading. Please try again in a moment.");
+      return;
+    }
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
