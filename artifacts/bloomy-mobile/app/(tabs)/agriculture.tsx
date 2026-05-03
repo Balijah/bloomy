@@ -255,6 +255,41 @@ function DroughtBadge({ level }: { level: DroughtLevel }) {
   );
 }
 
+// ─── Heat stress badge ────────────────────────────────────────────────────────
+
+type HeatStressLevel = "moderate" | "high" | "critical";
+
+const HEAT_CONFIG: Record<HeatStressLevel, { label: string; color: string }> = {
+  moderate: { label: "Heat Watch",   color: "#B07010" },
+  high:     { label: "Heat Warning", color: "#C04010" },
+  critical: { label: "Heat Alert",   color: "#C01818" },
+};
+
+function HeatStressBadge({ level }: { level: HeatStressLevel }) {
+  const { label, color } = HEAT_CONFIG[level];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: color + "15",
+        borderWidth: 1,
+        borderColor: color + "40",
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <Ionicons name="thermometer-outline" size={12} color={color} />
+      <Text style={{ fontSize: 12, fontFamily: "Outfit_600SemiBold", color }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Growth stage badge ───────────────────────────────────────────────────────
 
 interface StageInfo {
@@ -319,10 +354,11 @@ interface FarmCardProps {
   stageInfo?: StageInfo | null;
   weatherInfo?: WeatherInfo | null;
   droughtLevel?: DroughtLevel | null;
+  heatStressLevel?: HeatStressLevel | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, droughtLevel, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, droughtLevel, heatStressLevel, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -366,10 +402,11 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageIn
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo || droughtLevel) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo || droughtLevel || heatStressLevel) && (
         <View style={s(colors).cardMeta}>
           {weatherInfo && <WeatherChip info={weatherInfo} />}
           {droughtLevel && <DroughtBadge level={droughtLevel} />}
+          {heatStressLevel && <HeatStressBadge level={heatStressLevel} />}
           {item.acreage && (
             <View style={s(colors).metaChip}>
               <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
@@ -555,6 +592,21 @@ export default function AgricultureScreen() {
     return map;
   }, [profiles, queryClient]);
 
+  // Show a heat stress badge for moderate, high, or critical levels only.
+  const heatStressMap = React.useMemo(() => {
+    const map: Record<number, HeatStressLevel | null> = {};
+    profiles?.forEach((p) => {
+      const key = getGetAgricultureInsightsQueryKey(p.id);
+      const cached = queryClient.getQueryData<AgricultureInsights>(key);
+      const level = cached?.heatStressRisk?.level;
+      map[p.id] =
+        level === "moderate" || level === "high" || level === "critical"
+          ? (level as HeatStressLevel)
+          : null;
+    });
+    return map;
+  }, [profiles, queryClient]);
+
   // Eagerly prefetch agriculture insights for every farm as soon as the profile
   // list is available. prefetchQuery is a no-op for any farm whose cache is
   // still fresh (staleTime 5 min), so revisiting the tab is cheap.
@@ -705,6 +757,7 @@ export default function AgricultureScreen() {
             stageInfo={stageMap[item.id] ?? null}
             weatherInfo={weatherMap[item.id] ?? null}
             droughtLevel={droughtMap[item.id] ?? null}
+            heatStressLevel={heatStressMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}
