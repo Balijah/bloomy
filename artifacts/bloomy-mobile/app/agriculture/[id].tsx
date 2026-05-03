@@ -235,6 +235,132 @@ function RiskTimelineRow({
   );
 }
 
+function PeakRiskCallout({
+  temperatureDaily,
+  precipitationDaily,
+  showFrost,
+  showHeat,
+  showDrought,
+}: {
+  temperatureDaily: AgricultureInsightsDailyTemp[];
+  precipitationDaily: AgricultureInsightsDailyPrecip[];
+  showFrost: boolean;
+  showHeat: boolean;
+  showDrought: boolean;
+}) {
+  const days7 = temperatureDaily.slice(0, 7);
+
+  function dayLabel(i: number, isNight: boolean): string {
+    if (i === 0) return isNight ? "tonight" : "today";
+    if (i === 1) return isNight ? "tomorrow night" : "tomorrow";
+    const d = new Date(days7[i].date + "T12:00:00");
+    const name = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+    return isNight ? `${name} night` : name;
+  }
+
+  const callouts: Array<{ sentence: string; color: string; icon: string }> = [];
+
+  if (showFrost) {
+    let worstIdx = -1;
+    let worstTemp = Infinity;
+    days7.forEach((td, i) => {
+      if (td.tempMin != null && td.tempMin < 36 && td.tempMin < worstTemp) {
+        worstTemp = td.tempMin;
+        worstIdx = i;
+      }
+    });
+    if (worstIdx >= 0) {
+      const color =
+        worstTemp < 28 ? "#0D2B6B" : worstTemp < 32 ? "#1A4E9A" : "#3B7DD8";
+      callouts.push({
+        sentence: `Frost risk peaks ${dayLabel(worstIdx, true)} (${Math.round(worstTemp)}°F low)`,
+        color,
+        icon: "snow-outline",
+      });
+    }
+  }
+
+  if (showHeat) {
+    let worstIdx = -1;
+    let worstTemp = -Infinity;
+    days7.forEach((td, i) => {
+      if (td.tempMax != null && td.tempMax > 90 && td.tempMax > worstTemp) {
+        worstTemp = td.tempMax;
+        worstIdx = i;
+      }
+    });
+    if (worstIdx >= 0) {
+      const color =
+        worstTemp > 108 ? "#8B1A00" : worstTemp > 100 ? "#C03010" : "#E06020";
+      callouts.push({
+        sentence: `Heat stress peaks ${dayLabel(worstIdx, false)} (${Math.round(worstTemp)}°F high)`,
+        color,
+        icon: "thermometer-outline",
+      });
+    }
+  }
+
+  if (showDrought) {
+    let worstIdx = -1;
+    let worstChance = Infinity;
+    precipitationDaily.slice(0, 7).forEach((pd, i) => {
+      if (
+        pd.precipitationProbability != null &&
+        pd.precipitationProbability < 25 &&
+        pd.precipitationProbability < worstChance
+      ) {
+        worstChance = pd.precipitationProbability;
+        worstIdx = i;
+      }
+    });
+    if (worstIdx >= 0) {
+      const color =
+        worstChance < 5 ? "#8B2000" : worstChance < 15 ? "#B84010" : "#D08020";
+      callouts.push({
+        sentence: `Driest day is ${dayLabel(worstIdx, false)} (${Math.round(worstChance)}% chance of rain)`,
+        color,
+        icon: "warning-outline",
+      });
+    }
+  }
+
+  if (callouts.length === 0) return null;
+
+  return (
+    <View style={{ gap: 6 }}>
+      {callouts.map(({ sentence, color, icon }, i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: color + "12",
+            borderLeftWidth: 3,
+            borderLeftColor: color,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <Ionicons name={icon as any} size={14} color={color} />
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 13,
+              fontFamily: "Outfit_500Medium",
+              color,
+              lineHeight: 18,
+            }}
+          >
+            {sentence}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function RiskTimeline7Day({
   temperatureDaily,
   precipitationDaily,
@@ -714,13 +840,22 @@ export default function AgricultureDetailScreen() {
                   />
                 ))}
                 {insights.temperatureDaily && insights.temperatureDaily.length > 0 && (
-                  <RiskTimeline7Day
-                    temperatureDaily={insights.temperatureDaily}
-                    precipitationDaily={insights.precipitationDaily ?? []}
-                    showFrost={active.some((a) => a.title === "Frost Risk")}
-                    showHeat={active.some((a) => a.title === "Heat Stress")}
-                    showDrought={active.some((a) => a.title === "Drought Risk")}
-                  />
+                  <>
+                    <PeakRiskCallout
+                      temperatureDaily={insights.temperatureDaily}
+                      precipitationDaily={insights.precipitationDaily ?? []}
+                      showFrost={active.some((a) => a.title === "Frost Risk")}
+                      showHeat={active.some((a) => a.title === "Heat Stress")}
+                      showDrought={active.some((a) => a.title === "Drought Risk")}
+                    />
+                    <RiskTimeline7Day
+                      temperatureDaily={insights.temperatureDaily}
+                      precipitationDaily={insights.precipitationDaily ?? []}
+                      showFrost={active.some((a) => a.title === "Frost Risk")}
+                      showHeat={active.some((a) => a.title === "Heat Stress")}
+                      showDrought={active.some((a) => a.title === "Drought Risk")}
+                    />
+                  </>
                 )}
               </View>
             )}
