@@ -83,6 +83,13 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       await signUp.create({ emailAddress: email, password, firstName: firstName || undefined });
+      const nextStep = signUp.status;
+      if (nextStep === "complete" && signUp.createdSessionId) {
+        await setSignUpActive({ session: signUp.createdSessionId });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace("/(tabs)/");
+        return;
+      }
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setMode("verify");
     } catch (e: any) {
