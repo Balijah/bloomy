@@ -302,4 +302,132 @@ router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res)
   }));
 });
 
+// ─── Spray window alerts endpoint ────────────────────────────────────────────
+// Returns farms with ideal/good spray conditions in the next 48 hours so the
+// mobile background task can fire timely notifications without re-running the
+// full SprayWindowCard logic on-device.
+
+type SprayRating = "ideal" | "good";
+
+interface DayForecast {
+  date: string;
+  windSpeedMax: number;
+  tempMax: number;
+  tempMin: number;
+  precipitation: number;
+  precipitationProbability: number;
+}
+
+function scoreDayForSpray(d: DayForecast): SprayRating | null {
+  // Hard excludes
+  if (
+    d.tempMin <= 32 ||
+    d.windSpeedMax > 20 ||
+    d.precipitationProbability >= 65 ||
+    d.precipitation >= 0.25 ||
+    d.tempMax >= 95
+  )
+    return null;
+
+  const idealWind  = d.windSpeedMax >= 3  && d.windSpeedMax <= 10;
+  const idealTemp  = d.tempMax >= 55 && d.tempMax <= 85 && d.tempMin > 40;
+  const idealPrec  = d.precipitationProbability < 25 && d.precipitation < 0.05;
+  if (idealWind && idealTemp && idealPrec) return "ideal";
+
+  const goodWind   = d.windSpeedMax >= 2  && d.windSpeedMax <= 15;
+  const goodTemp   = d.tempMax >= 45 && d.tempMax <= 90;
+  const goodPrec   = d.precipitationProbability < 40 && d.precipitation < 0.1;
+  if (goodWind && goodTemp && goodPrec) return "good";
+
+  return null;
+}
+
+function dayLabel(date: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [y, m, d] = date.split("-").map(Number);
+  const target = new Date(y, m - 1, d);
+  const diffMs = target.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  return target.toLocaleDateString("en-US", { weekday: "long" });
+}
+
+router.get("/agriculture/spray-window-alerts", requireAuth, async (req, res): Promise<void> => {
+  const userId = await getUserId(req);
+
+  const farms = await db
+    .select()
+    .from(farmProfilesTable)
+    .where(eq(farmProfilesTable.userId, userId));
+
+  if (!farms.length) {
+    res.json({ upcomingWindows: [] });
+    return;
+  }
+
+  // Fetch location for each farm (deduplicated by locationId)
+  const locationIds = [...new Set(farms.map((f) => f.locationId))];
+  const locs = await db
+    .select()
+    .from(locationsTable)
+    .where(eq(locationsTable.userId, userId));
+
+  const locMap = Object.fromEntries(locs.map((l) => [l.id, l]));
+
+  // Fetch forecasts in parallel (one per unique location)
+  const forecastByLocationId: Record<number, Awaited<ReturnType<typeof fetchForecast>>> = {};
+  await Promise.all(
+    locationIds.map(async (lid) => {
+      const loc = locMap[lid];
+      if (!loc) return;
+      try {
+        forecastByLocationId[lid] = await fetchForecast(loc.lat, loc.lng);
+      } catch {
+        // skip farms whose forecast fails
+      }
+    })
+  );
+
+  // Score the next 2 days for each farm
+  const upcomingWindows: {
+    farmId: number;
+    farmName: string;
+    cropType: string;
+    date: string;
+    dayLabel: string;
+    rating: SprayRating;
+    windSpeed: number;
+    tempMax: number;
+    tempMin: number;
+    precipProbability: number;
+  }[] = [];
+
+  for (const farm of farms) {
+    const forecast = forecastByLocationId[farm.locationId];
+    if (!forecast) continue;
+
+    const next2 = forecast.slice(0, 2);
+    for (const day of next2) {
+      const rating = scoreDayForSpray(day as DayForecast);
+      if (!rating) continue;
+      upcomingWindows.push({
+        farmId:         farm.id,
+        farmName:       farm.name,
+        cropType:       farm.cropType,
+        date:           day.date,
+        dayLabel:       dayLabel(day.date),
+        rating,
+        windSpeed:      Math.round((day as any).windSpeedMax),
+        tempMax:        Math.round((day as any).tempMax),
+        tempMin:        Math.round((day as any).tempMin),
+        precipProbability: (day as any).precipitationProbability,
+      });
+    }
+  }
+
+  res.json({ upcomingWindows });
+});
+
 export default router;

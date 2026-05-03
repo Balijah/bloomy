@@ -19,11 +19,13 @@ import { Platform } from "react-native";
 export const BACKGROUND_FETCH_TASK = "BLOOMY_BACKGROUND_ALERTS";
 
 // Keys shared with the rest of the app
-export const BG_AUTH_TOKEN_KEY = "bloomy_bg_auth_token";
-export const BG_BASE_URL_KEY = "bloomy_bg_base_url";
-export const CACHED_ALERTS_KEY = "bloomy_cached_alerts";
-const SEEN_IDS_KEY = "bloomy_seen_alert_ids";
-const WEEKLY_DIGEST_SENT_KEY = "bloomy_weekly_digest_sent_date";
+export const BG_AUTH_TOKEN_KEY   = "bloomy_bg_auth_token";
+export const BG_BASE_URL_KEY     = "bloomy_bg_base_url";
+export const CACHED_ALERTS_KEY   = "bloomy_cached_alerts";
+const SEEN_IDS_KEY               = "bloomy_seen_alert_ids";
+const WEEKLY_DIGEST_SENT_KEY     = "bloomy_weekly_digest_sent_date";
+const SPRAY_ALERT_SEEN_KEY       = "bloomy_spray_alert_seen";
+export const SPRAY_ALERTS_ENABLED_KEY = "bloomy_spray_alerts_enabled";
 
 interface AlertItem {
   id: number;
@@ -217,6 +219,87 @@ async function checkAndFireWeeklyDigest(
   }
 }
 
+// ─── Spray window alerts ──────────────────────────────────────────────────────
+
+interface SprayWindowAlert {
+  farmId: number;
+  farmName: string;
+  cropType: string;
+  date: string;
+  dayLabel: string;
+  rating: "ideal" | "good";
+  windSpeed: number;
+  tempMax: number;
+  tempMin: number;
+  precipProbability: number;
+}
+
+/** Returns true if spray window notifications are enabled (default: true). */
+export async function getSprayAlertsEnabled(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(SPRAY_ALERTS_ENABLED_KEY);
+  return val !== "false";
+}
+
+/** Persist the user's preference for spray window notifications. */
+export async function setSprayAlertsEnabled(val: boolean): Promise<void> {
+  await AsyncStorage.setItem(SPRAY_ALERTS_ENABLED_KEY, val ? "true" : "false");
+}
+
+async function checkAndFireSprayWindowAlerts(
+  token: string | null,
+  baseUrl: string | null
+): Promise<void> {
+  if (!token || !baseUrl) return;
+
+  const enabled = await getSprayAlertsEnabled();
+  if (!enabled) return;
+
+  try {
+    const resp = await fetch(`${baseUrl}/api/agriculture/spray-window-alerts`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const windows: SprayWindowAlert[] = data.upcomingWindows ?? [];
+    if (!windows.length) return;
+
+    // Deduplicate — only notify once per farm+date combination
+    const seenRaw = await AsyncStorage.getItem(SPRAY_ALERT_SEEN_KEY);
+    const seen = new Set<string>(seenRaw ? JSON.parse(seenRaw) : []);
+
+    const fresh = windows.filter((w) => !seen.has(`${w.farmId}_${w.date}`));
+    if (!fresh.length) return;
+
+    // Fire one notification per new window (cap at 3 to avoid spam)
+    for (const w of fresh.slice(0, 3)) {
+      const ratingWord = w.rating === "ideal" ? "Ideal" : "Good";
+      const body =
+        `${w.windSpeed} mph wind · ${w.tempMax}°F high · ${w.precipProbability}% rain — ` +
+        `${ratingWord.toLowerCase()} conditions for spraying.`;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🌿 Spray Window: ${w.farmName} · ${w.dayLabel}`,
+          body,
+          data: { screen: "farm", farmProfileId: w.farmId },
+          sound: "default",
+        },
+        trigger: null,
+      });
+
+      seen.add(`${w.farmId}_${w.date}`);
+    }
+
+    // Trim to last 200 entries to prevent unbounded growth
+    const trimmed = [...seen].slice(-200);
+    await AsyncStorage.setItem(SPRAY_ALERT_SEEN_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Network error or parse failure — silently skip; retry next cycle
+  }
+}
+
 // ─── Task definition ─────────────────────────────────────────────────────────
 // Must be called at module level (not inside a component or function).
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
@@ -227,8 +310,11 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
       AsyncStorage.getItem(CACHED_ALERTS_KEY),
     ]);
 
-    // Weekly digest check runs independently of the alert poll
-    await checkAndFireWeeklyDigest(token, baseUrl);
+    // Weekly digest + spray window checks run independently of the alert poll
+    await Promise.all([
+      checkAndFireWeeklyDigest(token, baseUrl),
+      checkAndFireSprayWindowAlerts(token, baseUrl),
+    ]);
 
     let alerts: AlertItem[] | null = null;
 

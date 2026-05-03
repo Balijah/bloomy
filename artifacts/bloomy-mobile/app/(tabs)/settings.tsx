@@ -27,6 +27,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useGeofencing } from "@/contexts/GeofencingContext";
+import {
+  getSprayAlertsEnabled,
+  setSprayAlertsEnabled,
+} from "@/utils/backgroundAlerts";
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
   free: { label: "Free", color: "#6E736E" },
@@ -194,6 +198,12 @@ export default function SettingsScreen() {
   const [locName, setLocName] = useState("");
   const [locLat, setLocLat] = useState("");
   const [locLng, setLocLng] = useState("");
+  const [sprayAlertsEnabled, setSprayAlertsEnabledState] = useState(true);
+
+  React.useEffect(() => {
+    if (Platform.OS === "web") return;
+    getSprayAlertsEnabled().then(setSprayAlertsEnabledState);
+  }, []);
 
   const tier = user?.subscriptionTier ?? "free";
   const tierInfo = TIER_LABELS[tier] ?? TIER_LABELS.free;
@@ -238,6 +248,13 @@ export default function SettingsScreen() {
     if (notifUnavailable) return;
     Haptics.selectionAsync();
     updatePrefs.mutate({ data: { weeklyDigestEnabled: val } });
+  }
+
+  async function handleToggleSprayAlerts(val: boolean) {
+    if (notifUnavailable) return;
+    Haptics.selectionAsync();
+    setSprayAlertsEnabledState(val);
+    await setSprayAlertsEnabled(val);
   }
 
   function handleSetSeverity(sev: "critical" | "high" | "all") {
@@ -591,6 +608,44 @@ export default function SettingsScreen() {
                     }}
                   >
                     Critical frost, heat stress, drought, and harvest disruption risks detected on your farms will automatically create alerts. Tap a farm alert notification to jump straight to that farm's detail screen.
+                  </Text>
+                </View>
+
+                {/* Spray window alerts toggle */}
+                <Divider />
+                <SettingRow
+                  icon={sprayAlertsEnabled ? "water" : "water-outline"}
+                  label="Spray Window Alerts"
+                  testID="row-spray-alerts-toggle"
+                  right={
+                    <Switch
+                      value={sprayAlertsEnabled}
+                      onValueChange={handleToggleSprayAlerts}
+                      trackColor={{
+                        false: colors.muted,
+                        true: colors.primary + "88",
+                      }}
+                      thumbColor={
+                        sprayAlertsEnabled
+                          ? colors.primary
+                          : colors.mutedForeground
+                      }
+                      testID="switch-spray-alerts"
+                    />
+                  }
+                />
+                <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Outfit_400Regular",
+                      color: colors.mutedForeground,
+                      lineHeight: 17,
+                    }}
+                  >
+                    {sprayAlertsEnabled
+                      ? "Get notified when ideal or good spray conditions open up on any of your farms within the next 48 hours. Checked every 15 minutes in the background."
+                      : "Spray window alerts are off. Re-enable to receive timely spray condition notifications."}
                   </Text>
                 </View>
 
