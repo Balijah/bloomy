@@ -325,6 +325,86 @@ function FrostBadge({ level }: { level: FrostLevel }) {
   );
 }
 
+// ─── Risk summary chip (consolidates frost / heat / drought) ─────────────────
+
+interface ActiveRisk {
+  label: string;
+  color: string;
+  icon: string;
+  /** Higher = shown first. severity (30/20/10) + type priority (3/2/1) */
+  score: number;
+}
+
+function severityScore(level: string): number {
+  return level === "critical" ? 30 : level === "high" ? 20 : 10;
+}
+
+function buildRisks(cached: AgricultureInsights | undefined): ActiveRisk[] {
+  if (!cached) return [];
+  const risks: ActiveRisk[] = [];
+
+  function push(
+    riskLevel: { level: string } | undefined | null,
+    config: Record<string, { label: string; color: string }>,
+    icon: string,
+    typePriority: number
+  ) {
+    const lvl = riskLevel?.level ?? "none";
+    if (lvl === "moderate" || lvl === "high" || lvl === "critical") {
+      const cfg = config[lvl];
+      risks.push({ label: cfg.label, color: cfg.color, icon, score: severityScore(lvl) + typePriority });
+    }
+  }
+
+  push(cached.frostRisk,      FROST_CONFIG,   "snow-outline",        3);
+  push(cached.heatStressRisk,  HEAT_CONFIG,    "thermometer-outline", 2);
+  push(cached.droughtRisk,     DROUGHT_CONFIG, "warning-outline",     1);
+
+  return risks.sort((a, b) => b.score - a.score);
+}
+
+function RiskSummaryChip({ risks }: { risks: ActiveRisk[] }) {
+  const primary = risks[0];
+  const extra   = risks.length - 1;
+  const { color, icon, label } = primary;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: color + "15",
+        borderWidth: 1,
+        borderColor: color + "40",
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <Ionicons name={icon as any} size={12} color={color} />
+      <Text style={{ fontSize: 12, fontFamily: "Outfit_600SemiBold", color }}>
+        {label}
+      </Text>
+      {extra > 0 && (
+        <View
+          style={{
+            backgroundColor: color + "25",
+            borderRadius: 10,
+            paddingHorizontal: 5,
+            paddingVertical: 1,
+            marginLeft: 1,
+          }}
+        >
+          <Text style={{ fontSize: 10, fontFamily: "Outfit_700Bold", color }}>
+            +{extra}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Growth stage badge ───────────────────────────────────────────────────────
 
 interface StageInfo {
@@ -388,13 +468,11 @@ interface FarmCardProps {
   sprayWindow?: SprayWindowEntry | null;
   stageInfo?: StageInfo | null;
   weatherInfo?: WeatherInfo | null;
-  droughtLevel?: DroughtLevel | null;
-  heatStressLevel?: HeatStressLevel | null;
-  frostLevel?: FrostLevel | null;
+  risks?: ActiveRisk[] | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, droughtLevel, heatStressLevel, frostLevel, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, risks, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -438,12 +516,10 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageIn
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo || droughtLevel || heatStressLevel || frostLevel) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo || risks?.length) && (
         <View style={s(colors).cardMeta}>
           {weatherInfo && <WeatherChip info={weatherInfo} />}
-          {frostLevel && <FrostBadge level={frostLevel} />}
-          {droughtLevel && <DroughtBadge level={droughtLevel} />}
-          {heatStressLevel && <HeatStressBadge level={heatStressLevel} />}
+          {risks && risks.length > 0 && <RiskSummaryChip risks={risks} />}
           {item.acreage && (
             <View style={s(colors).metaChip}>
               <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
@@ -614,47 +690,14 @@ export default function AgricultureScreen() {
     return map;
   }, [profiles, queryClient]);
 
-  // Show a drought badge for moderate, high, or critical drought risk only.
-  const droughtMap = React.useMemo(() => {
-    const map: Record<number, DroughtLevel | null> = {};
+  // Consolidate all three risk types into a single sorted list per farm.
+  // Highest-severity risk is first; a "+N" count badge shows additional risks.
+  const riskMap = React.useMemo(() => {
+    const map: Record<number, ActiveRisk[]> = {};
     profiles?.forEach((p) => {
       const key = getGetAgricultureInsightsQueryKey(p.id);
       const cached = queryClient.getQueryData<AgricultureInsights>(key);
-      const level = cached?.droughtRisk?.level;
-      map[p.id] =
-        level === "moderate" || level === "high" || level === "critical"
-          ? (level as DroughtLevel)
-          : null;
-    });
-    return map;
-  }, [profiles, queryClient]);
-
-  // Show a heat stress badge for moderate, high, or critical levels only.
-  const heatStressMap = React.useMemo(() => {
-    const map: Record<number, HeatStressLevel | null> = {};
-    profiles?.forEach((p) => {
-      const key = getGetAgricultureInsightsQueryKey(p.id);
-      const cached = queryClient.getQueryData<AgricultureInsights>(key);
-      const level = cached?.heatStressRisk?.level;
-      map[p.id] =
-        level === "moderate" || level === "high" || level === "critical"
-          ? (level as HeatStressLevel)
-          : null;
-    });
-    return map;
-  }, [profiles, queryClient]);
-
-  // Show a frost badge for moderate, high, or critical frost risk only.
-  const frostMap = React.useMemo(() => {
-    const map: Record<number, FrostLevel | null> = {};
-    profiles?.forEach((p) => {
-      const key = getGetAgricultureInsightsQueryKey(p.id);
-      const cached = queryClient.getQueryData<AgricultureInsights>(key);
-      const level = cached?.frostRisk?.level;
-      map[p.id] =
-        level === "moderate" || level === "high" || level === "critical"
-          ? (level as FrostLevel)
-          : null;
+      map[p.id] = buildRisks(cached);
     });
     return map;
   }, [profiles, queryClient]);
@@ -808,9 +851,7 @@ export default function AgricultureScreen() {
             sprayWindow={sprayWindowMap[item.id] ?? null}
             stageInfo={stageMap[item.id] ?? null}
             weatherInfo={weatherMap[item.id] ?? null}
-            droughtLevel={droughtMap[item.id] ?? null}
-            heatStressLevel={heatStressMap[item.id] ?? null}
-            frostLevel={frostMap[item.id] ?? null}
+            risks={riskMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}
