@@ -16,8 +16,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { setBaseUrl } from "@workspace/api-client-react";
 
 type Mode = "sign-in" | "sign-up" | "verify";
+
+const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+
+if (BASE_URL) {
+  setBaseUrl(BASE_URL);
+}
 
 export default function SignInScreen() {
   const colors = useColors();
@@ -36,6 +43,7 @@ export default function SignInScreen() {
 
   const isLoaded = signInLoaded && signUpLoaded;
   const canSubmit = isLoaded && !loading && email.trim().length > 0 && password.length > 0;
+  const authStateMessage = !isLoaded ? "Loading auth…" : "";
 
   async function handleSignIn() {
     if (!signIn) {
