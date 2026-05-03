@@ -4,11 +4,15 @@ import {
   useGetFarmProfiles,
   useGetLocations,
   useGetAlerts,
+  useGetInputCosts,
+  useGetYieldRecords,
   getGetFarmProfileQueryKey,
   getGetAgricultureInsightsQueryKey,
   getGetLocationsQueryKey,
   getGetAlertsQueryKey,
   getGetFarmProfilesQueryKey,
+  getGetInputCostsQueryKey,
+  getGetYieldRecordsQueryKey,
 } from "@workspace/api-client-react";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
@@ -171,6 +175,12 @@ export default function AgricultureDetailScreen() {
   const { data: allLocations } = useGetLocations();
   const { data: allFarms } = useGetFarmProfiles();
   const { data: alerts } = useGetAlerts({});
+  const { data: inputCosts = [] } = useGetInputCosts(farmId, {
+    query: { enabled: !!farmId, queryKey: getGetInputCostsQueryKey(farmId) },
+  });
+  const { data: yieldRecords = [] } = useGetYieldRecords(farmId, {
+    query: { enabled: !!farmId, queryKey: getGetYieldRecordsQueryKey(farmId) },
+  });
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -201,8 +211,25 @@ export default function AgricultureDetailScreen() {
           plantingDate: profile.plantingDate,
           harvestDate: profile.harvestDate,
           notes: profile.notes,
+          costPerAcre: profile.costPerAcre,
+          yieldGoal: profile.yieldGoal,
         },
         locationName,
+        inputCosts: inputCosts.map((c) => ({
+          id: c.id,
+          category: c.category,
+          item: c.item,
+          costPerAcre: c.costPerAcre ?? null,
+          totalCost: c.totalCost ?? null,
+          acresApplied: c.acresApplied ?? null,
+          notes: c.notes ?? null,
+        })),
+        yieldRecords: yieldRecords.map((r) => ({
+          id: r.id,
+          harvestYear: r.harvestYear,
+          actualYield: r.actualYield,
+          notes: r.notes ?? null,
+        })),
         insights: {
           growingDegreeDaysForecast: insights.growingDegreeDaysForecast,
           soilMoisture: insights.soilMoisture,
@@ -233,7 +260,7 @@ export default function AgricultureDetailScreen() {
     } finally {
       setSharing(false);
     }
-  }, [profile, insights, allLocations, sharing]);
+  }, [profile, insights, allLocations, inputCosts, yieldRecords, sharing]);
 
   const isLoading = profileLoading || insightsLoading;
 

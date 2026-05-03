@@ -127,6 +127,325 @@ function riskRow(
     </tr>`;
 }
 
+// ── USDA ERS national-average cost hints (corn, $/acre) ──────────────────────
+const ERS_HINTS: Record<string, number> = {
+  seed: 120, fertilizer: 180, herbicide: 60, pesticide: 25,
+  fuel: 35, labor: 30, custom_operation: 50, equipment: 150,
+  irrigation: 0, drying: 35, other: 0,
+};
+
+// ── Default market price hints ($/unit) ──────────────────────────────────────
+const PRICE_HINTS: Record<string, { price: number; unit: string }> = {
+  corn:         { price: 4.50, unit: "bu" },
+  soybeans:     { price: 12.00, unit: "bu" },
+  winter_wheat: { price: 5.50, unit: "bu" },
+  cotton:       { price: 0.80, unit: "lb" },
+  rice:         { price: 14.00, unit: "cwt" },
+  potatoes:     { price: 10.00, unit: "cwt" },
+  grapes:       { price: 800.00, unit: "ton" },
+  almonds:      { price: 1.80, unit: "lb" },
+  apples:       { price: 25.00, unit: "bu" },
+  other:        { price: 0, unit: "unit" },
+};
+
+// ── USDA APH average yields ───────────────────────────────────────────────────
+const APH_AVG: Record<string, number> = {
+  corn: 175, soybeans: 50, winter_wheat: 52, cotton: 900,
+  potatoes: 430, grapes: 5, almonds: 2000, apples: 22, rice: 130,
+};
+
+// ── Input cost line-item type ─────────────────────────────────────────────────
+export interface InputCostItem {
+  id: number;
+  category: string;
+  item: string;
+  costPerAcre: number | null;
+  totalCost: number | null;
+  acresApplied: number | null;
+  notes: string | null;
+}
+
+// ── Yield record type ─────────────────────────────────────────────────────────
+export interface YieldRecordItem {
+  id: number;
+  harvestYear: number;
+  actualYield: number;
+  notes: string | null;
+}
+
+// ── Cost helpers (no React) ───────────────────────────────────────────────────
+function effectiveCpa(item: InputCostItem, farmAcreage: number | null | undefined): number | null {
+  if (item.costPerAcre != null) return item.costPerAcre;
+  if (item.totalCost != null) {
+    const acres = item.acresApplied ?? farmAcreage;
+    if (acres && acres > 0) return item.totalCost / acres;
+  }
+  return null;
+}
+
+function trackedTotal(items: InputCostItem[], farmAcreage: number | null | undefined): number {
+  return items.reduce((s, it) => s + (effectiveCpa(it, farmAcreage) ?? 0), 0);
+}
+
+// ── Category label map ────────────────────────────────────────────────────────
+const CAT_LABEL: Record<string, string> = {
+  seed: "Seed", fertilizer: "Fertilizer", herbicide: "Herbicide",
+  pesticide: "Pesticide", fuel: "Fuel", labor: "Labor",
+  custom_operation: "Custom Operation", equipment: "Equipment",
+  irrigation: "Irrigation", drying: "Drying", other: "Other",
+};
+const CAT_COLOR: Record<string, string> = {
+  seed: "#4D8A5E", fertilizer: "#366441", herbicide: "#8B7355",
+  pesticide: "#7B5EA7", fuel: "#C15A3A", labor: "#2D7DD2",
+  custom_operation: "#E8A020", equipment: "#5B5B5B",
+  irrigation: "#0EA5E9", drying: "#DC6803", other: "#6B7280",
+};
+
+// ── Section: Input Costs ──────────────────────────────────────────────────────
+function buildInputCostsSection(
+  items: InputCostItem[],
+  estimateCpa: number | null | undefined,
+  farmAcreage: number | null | undefined
+): string {
+  if (!items.length) return "";
+
+  const tracked = trackedTotal(items, farmAcreage);
+  const totalFarm = farmAcreage ? Math.round(tracked * farmAcreage) : null;
+  const diff = estimateCpa != null ? tracked - estimateCpa : null;
+  const diffPct = diff != null && estimateCpa! > 0 ? Math.round((diff / estimateCpa!) * 100) : null;
+  const significant = Math.abs(diffPct ?? 0) > 5;
+
+  let statusBg = "#DCFCE7"; let statusText = "#16A34A"; let statusLabel = "On Budget";
+  if (diff != null && significant) {
+    if (diff > 0) { statusBg = "#FEE2E2"; statusText = "#DC2626"; statusLabel = "Over Estimate"; }
+    else          { statusBg = "#FEF9C3"; statusText = "#CA8A04"; statusLabel = "Under Estimate"; }
+  }
+
+  // Summary strip
+  const summaryHtml = `
+    <div style="display:flex;gap:0;border:1px solid ${BORDER};border-radius:10px;overflow:hidden;margin-bottom:10px;">
+      <div style="flex:1;padding:12px 14px;background:#366441;color:white;text-align:center;">
+        <div style="font-size:20px;font-weight:700;line-height:1.2;">$${tracked%1===0?tracked:tracked.toFixed(2)}</div>
+        <div style="font-size:9px;opacity:.75;margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">Tracked /acre</div>
+      </div>
+      ${estimateCpa != null ? `
+      <div style="flex:1;padding:12px 14px;background:${BG};text-align:center;">
+        <div style="font-size:20px;font-weight:700;line-height:1.2;color:${TEXT};">$${estimateCpa%1===0?estimateCpa:estimateCpa.toFixed(2)}</div>
+        <div style="font-size:9px;color:${MUTED};margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">B/E Estimate</div>
+      </div>` : ""}
+      ${totalFarm != null ? `
+      <div style="flex:1;padding:12px 14px;background:${BG};text-align:center;">
+        <div style="font-size:20px;font-weight:700;line-height:1.2;color:${TEXT};">$${totalFarm.toLocaleString()}</div>
+        <div style="font-size:9px;color:${MUTED};margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">Total Farm</div>
+      </div>` : ""}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      ${badge(statusLabel + (diffPct!=null&&significant?(diff!>0?` (+${diffPct}%)`:`(${diffPct}%)`):""), statusBg, statusText)}
+      <span style="font-size:11px;color:${MUTED};">${items.length} line item${items.length!==1?"s":""}</span>
+    </div>`;
+
+  // Category breakdown with inline bar chart
+  const grouped: Record<string, InputCostItem[]> = {};
+  for (const it of items) {
+    (grouped[it.category] = grouped[it.category] ?? []).push(it);
+  }
+  const cats = Object.keys(grouped).sort((a, b) => {
+    const sa = grouped[a].reduce((s, it) => s+(effectiveCpa(it,farmAcreage)??0), 0);
+    const sb = grouped[b].reduce((s, it) => s+(effectiveCpa(it,farmAcreage)??0), 0);
+    return sb - sa;
+  });
+
+  const catRows = cats.map((cat) => {
+    const its = grouped[cat];
+    const sub = its.reduce((s, it) => s+(effectiveCpa(it,farmAcreage)??0), 0);
+    const pct = tracked > 0 ? Math.round((sub/tracked)*100) : 0;
+    const col = CAT_COLOR[cat] ?? "#6B7280";
+    const lbl = CAT_LABEL[cat] ?? capitalize(cat);
+    return `
+      <tr>
+        <td style="padding:8px 10px;font-size:12px;color:${TEXT};font-weight:600;white-space:nowrap;width:120px;">${lbl}</td>
+        <td style="padding:8px 10px;">
+          <div style="background:${BORDER};border-radius:3px;height:8px;overflow:hidden;min-width:80px;">
+            <div style="background:${col};height:100%;width:${pct}%;border-radius:3px;"></div>
+          </div>
+        </td>
+        <td style="padding:8px 10px;font-size:11px;color:${MUTED};text-align:right;width:30px;">${pct}%</td>
+        <td style="padding:8px 10px;font-size:12px;color:${col};font-weight:700;text-align:right;white-space:nowrap;">$${sub%1===0?sub:sub.toFixed(2)}/ac</td>
+      </tr>
+      ${its.map(it => {
+        const cpa = effectiveCpa(it, farmAcreage);
+        return `<tr style="background:${BG};">
+          <td style="padding:4px 10px 4px 22px;font-size:11px;color:${MUTED};" colspan="2">${it.item}${it.notes?` · ${it.notes}`:""}</td>
+          <td style="padding:4px 10px;font-size:11px;color:${MUTED};text-align:right;"></td>
+          <td style="padding:4px 10px;font-size:11px;color:${TEXT};text-align:right;white-space:nowrap;">
+            ${cpa!=null?`$${cpa%1===0?cpa:cpa.toFixed(2)}/ac`:it.totalCost!=null?`$${it.totalCost.toLocaleString()} total`:"—"}
+          </td>
+        </tr>`;
+      }).join("")}`;
+  }).join("");
+
+  return `
+    ${sectionTitle("Input Cost Analysis")}
+    ${summaryHtml}
+    <table style="width:100%;border-collapse:collapse;border:1px solid ${BORDER};border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background:${BG};">
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">CATEGORY</th>
+          <th style="padding:7px 10px;font-size:10px;color:${MUTED};font-weight:600;"></th>
+          <th style="padding:7px 10px;font-size:10px;color:${MUTED};font-weight:600;text-align:right;letter-spacing:.5px;">SHARE</th>
+          <th style="padding:7px 10px;text-align:right;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">$/ACRE</th>
+        </tr>
+      </thead>
+      <tbody>${catRows}</tbody>
+    </table>`;
+}
+
+// ── Section: Breakeven Analysis ───────────────────────────────────────────────
+function buildBreakevenSection(
+  costPerAcre: number | null | undefined,
+  yieldGoal: number | null | undefined,
+  cropType: string,
+  trackedCpa: number | null,
+): string {
+  const hasCost = costPerAcre != null && costPerAcre > 0;
+  const hasGoal = yieldGoal   != null && yieldGoal   > 0;
+  if (!hasCost && !hasGoal) return "";
+
+  const priceHint = PRICE_HINTS[cropType] ?? PRICE_HINTS.other;
+  const breakevenYield = hasCost && priceHint.price > 0
+    ? (costPerAcre! / priceHint.price)
+    : null;
+
+  const margin = breakevenYield != null && hasGoal
+    ? ((yieldGoal! - breakevenYield) / yieldGoal!) * 100
+    : null;
+
+  const metrics = [
+    hasCost     ? { label: "Cost Estimate",     value: `$${costPerAcre!.toFixed(2)}/acre`  } : null,
+    trackedCpa != null && trackedCpa > 0
+                ? { label: "Tracked Cost",       value: `$${trackedCpa.toFixed(2)}/acre`   } : null,
+    hasGoal     ? { label: "Yield Goal",         value: `${yieldGoal} ${priceHint.unit}/ac` } : null,
+    breakevenYield != null
+                ? { label: "Breakeven Yield",    value: `${breakevenYield.toFixed(1)} ${priceHint.unit}/ac` } : null,
+    margin != null
+                ? { label: "Safety Margin",      value: `${margin >= 0 ? "+" : ""}${margin.toFixed(1)}%` } : null,
+    priceHint.price > 0
+                ? { label: "Reference Price",    value: `$${priceHint.price.toFixed(2)}/${priceHint.unit}` } : null,
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  // Scenario table (Low/Target/High)
+  let scenariosHtml = "";
+  if (hasCost && priceHint.price > 0) {
+    const scenarios = [
+      { label: "Low",    yield: hasGoal ? yieldGoal! * 0.80 : null },
+      { label: "Target", yield: hasGoal ? yieldGoal! * 1.00 : null },
+      { label: "High",   yield: hasGoal ? yieldGoal! * 1.20 : null },
+    ].filter(s => s.yield != null) as { label: string; yield: number }[];
+
+    if (scenarios.length) {
+      const rows = scenarios.map(({ label, yield: y }) => {
+        const rev   = y * priceHint.price;
+        const profit = rev - costPerAcre!;
+        const color  = profit >= 0 ? "#16A34A" : "#DC2626";
+        return `<tr>
+          <td style="padding:7px 10px;font-size:12px;color:${TEXT};border-bottom:1px solid ${BORDER};">${label}</td>
+          <td style="padding:7px 10px;font-size:12px;color:${TEXT};border-bottom:1px solid ${BORDER};">${y.toFixed(1)} ${priceHint.unit}/ac</td>
+          <td style="padding:7px 10px;font-size:12px;color:${TEXT};border-bottom:1px solid ${BORDER};">$${rev.toFixed(2)}/ac</td>
+          <td style="padding:7px 10px;font-size:12px;font-weight:700;color:${color};border-bottom:1px solid ${BORDER};">${profit>=0?"+":""}$${profit.toFixed(2)}/ac</td>
+        </tr>`;
+      }).join("");
+      scenariosHtml = `
+        <div style="margin-top:12px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:${MUTED};margin-bottom:6px;">Profit Scenarios</div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid ${BORDER};border-radius:8px;overflow:hidden;">
+            <thead>
+              <tr style="background:${BG};">
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">SCENARIO</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">YIELD</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">REVENUE/AC</th>
+                <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">PROFIT/AC</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  }
+
+  const metricsHtml = `
+    <table style="width:100%;border-collapse:collapse;">
+      ${metrics.map(({ label, value }, i) => `
+        <tr style="background:${i%2===0?BG:CARD}">
+          <td style="padding:6px 10px;font-size:11px;color:${MUTED};width:48%;">${label}</td>
+          <td style="padding:6px 10px;font-size:12px;color:${TEXT};font-weight:600;">${value}</td>
+        </tr>`).join("")}
+    </table>`;
+
+  return `${sectionTitle("Breakeven Analysis")}${metricsHtml}${scenariosHtml}`;
+}
+
+// ── Section: Yield History ────────────────────────────────────────────────────
+function buildYieldHistorySection(
+  records: YieldRecordItem[],
+  cropType: string,
+): string {
+  if (!records.length) return "";
+
+  const sorted = [...records].sort((a, b) => a.harvestYear - b.harvestYear);
+  const aphAvg = APH_AVG[cropType] ?? null;
+  const priceHint = PRICE_HINTS[cropType] ?? PRICE_HINTS.other;
+
+  // Compute APH (5-year trailing avg of most recent records)
+  const recentYields = sorted.slice(-5).map(r => r.actualYield);
+  const aph = recentYields.length
+    ? recentYields.reduce((s, v) => s+v, 0) / recentYields.length
+    : null;
+
+  const rows = sorted.map((r, i) => {
+    const prev  = i > 0 ? sorted[i-1].actualYield : null;
+    const chg   = prev != null ? r.actualYield - prev : null;
+    const vsAvg = aphAvg != null ? r.actualYield - aphAvg : null;
+    const chgColor  = chg  == null ? MUTED : chg  >= 0 ? "#16A34A" : "#DC2626";
+    const avgColor  = vsAvg == null ? MUTED : vsAvg >= 0 ? "#16A34A" : "#DC2626";
+    return `<tr style="background:${i%2===0?CARD:BG};">
+      <td style="padding:7px 10px;font-size:12px;color:${TEXT};border-bottom:1px solid ${BORDER};font-weight:600;">${r.harvestYear}</td>
+      <td style="padding:7px 10px;font-size:12px;color:${TEXT};border-bottom:1px solid ${BORDER};">${r.actualYield} ${priceHint.unit}/ac</td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;color:${chgColor};border-bottom:1px solid ${BORDER};">
+        ${chg == null ? "—" : `${chg>=0?"+":""}${chg.toFixed(1)}`}
+      </td>
+      <td style="padding:7px 10px;font-size:12px;font-weight:600;color:${avgColor};border-bottom:1px solid ${BORDER};">
+        ${vsAvg == null ? "—" : `${vsAvg>=0?"+":""}${vsAvg.toFixed(1)}`}
+      </td>
+      <td style="padding:7px 10px;font-size:11px;color:${MUTED};border-bottom:1px solid ${BORDER};">${r.notes ?? ""}</td>
+    </tr>`;
+  }).join("");
+
+  const aphRow = aph != null ? `
+    <tr style="background:#366441;color:white;">
+      <td style="padding:7px 10px;font-size:11px;font-weight:700;" colspan="2">
+        ${recentYields.length}-yr APH: ${aph.toFixed(1)} ${priceHint.unit}/ac
+      </td>
+      <td colspan="3" style="padding:7px 10px;font-size:11px;opacity:.8;">
+        ${aphAvg != null ? `USDA national avg: ${aphAvg} ${priceHint.unit}/ac` : ""}
+      </td>
+    </tr>` : "";
+
+  return `
+    ${sectionTitle("Yield History")}
+    <table style="width:100%;border-collapse:collapse;border:1px solid ${BORDER};border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background:${BG};">
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">YEAR</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">YIELD</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">YR CHANGE</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">VS USDA AVG</th>
+          <th style="padding:7px 10px;text-align:left;font-size:10px;color:${MUTED};font-weight:600;letter-spacing:.5px;">NOTES</th>
+        </tr>
+      </thead>
+      <tbody>${rows}${aphRow}</tbody>
+    </table>`;
+}
+
 // ── main export ───────────────────────────────────────────────────────────────
 export interface FarmReportData {
   profile: {
@@ -137,8 +456,12 @@ export interface FarmReportData {
     plantingDate?: Date | string | null;
     harvestDate?: Date | string | null;
     notes?: string | null;
+    costPerAcre?: number | null;
+    yieldGoal?: number | null;
   };
   locationName?: string | null;
+  inputCosts?: InputCostItem[];
+  yieldRecords?: YieldRecordItem[];
   insights: {
     growingDegreeDaysForecast?: number | null;
     soilMoisture?: number | null;
@@ -159,7 +482,7 @@ export interface FarmReportData {
 }
 
 export function generateFarmReportHtml(report: FarmReportData): string {
-  const { profile, locationName, insights } = report;
+  const { profile, locationName, insights, inputCosts = [], yieldRecords = [] } = report;
   const now = new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -338,6 +661,12 @@ export function generateFarmReportHtml(report: FarmReportData): string {
     ${sectionTitle("Farm Notes")}
     <p style="font-size:12px;color:${TEXT};line-height:1.6;margin:0;white-space:pre-wrap;">${profile.notes}</p>` : "";
 
+  // ── New sections ─────────────────────────────────────────────────────────
+  const trackedCpa = inputCosts.length > 0 ? trackedTotal(inputCosts, profile.acreage) : null;
+  const inputCostsHtml  = buildInputCostsSection(inputCosts, profile.costPerAcre, profile.acreage);
+  const breakevenHtml   = buildBreakevenSection(profile.costPerAcre, profile.yieldGoal, profile.cropType, trackedCpa);
+  const yieldHistoryHtml = buildYieldHistorySection(yieldRecords, profile.cropType);
+
   // ── Assemble ─────────────────────────────────────────────────────────────
   return `<!DOCTYPE html>
 <html>
@@ -377,6 +706,9 @@ export function generateFarmReportHtml(report: FarmReportData): string {
 
     ${seasonHtml}
     ${condHtml}
+    ${inputCostsHtml}
+    ${breakevenHtml}
+    ${yieldHistoryHtml}
     ${riskHtml}
     ${forecastHtml}
     ${recsHtml}
