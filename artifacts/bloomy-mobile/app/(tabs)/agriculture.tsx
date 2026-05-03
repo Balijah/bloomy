@@ -220,6 +220,41 @@ function WeatherChip({ info }: { info: WeatherInfo }) {
   );
 }
 
+// ─── Drought risk badge ───────────────────────────────────────────────────────
+
+type DroughtLevel = "moderate" | "high" | "critical";
+
+const DROUGHT_CONFIG: Record<DroughtLevel, { label: string; color: string }> = {
+  moderate: { label: "Drought Watch",   color: "#A07010" },
+  high:     { label: "Drought Warning", color: "#C05A1A" },
+  critical: { label: "Drought Alert",   color: "#C02020" },
+};
+
+function DroughtBadge({ level }: { level: DroughtLevel }) {
+  const { label, color } = DROUGHT_CONFIG[level];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: color + "15",
+        borderWidth: 1,
+        borderColor: color + "40",
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 20,
+      }}
+    >
+      <Ionicons name="warning-outline" size={12} color={color} />
+      <Text style={{ fontSize: 12, fontFamily: "Outfit_600SemiBold", color }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Growth stage badge ───────────────────────────────────────────────────────
 
 interface StageInfo {
@@ -283,10 +318,11 @@ interface FarmCardProps {
   sprayWindow?: SprayWindowEntry | null;
   stageInfo?: StageInfo | null;
   weatherInfo?: WeatherInfo | null;
+  droughtLevel?: DroughtLevel | null;
   onDelete: (id: number, name: string) => void;
 }
 
-function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, onDelete }: FarmCardProps) {
+function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageInfo, weatherInfo, droughtLevel, onDelete }: FarmCardProps) {
   const colors = useColors();
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -330,9 +366,10 @@ function SwipeableFarmCard({ item, locationName, soilScore, sprayWindow, stageIn
         )}
       </View>
 
-      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo) && (
+      {(item.acreage || item.plantingDate || soilScore || sprayWindow || stageInfo || weatherInfo || droughtLevel) && (
         <View style={s(colors).cardMeta}>
           {weatherInfo && <WeatherChip info={weatherInfo} />}
+          {droughtLevel && <DroughtBadge level={droughtLevel} />}
           {item.acreage && (
             <View style={s(colors).metaChip}>
               <Ionicons name="resize-outline" size={13} color={colors.mutedForeground} />
@@ -503,6 +540,21 @@ export default function AgricultureScreen() {
     return map;
   }, [profiles, queryClient]);
 
+  // Show a drought badge for moderate, high, or critical drought risk only.
+  const droughtMap = React.useMemo(() => {
+    const map: Record<number, DroughtLevel | null> = {};
+    profiles?.forEach((p) => {
+      const key = getGetAgricultureInsightsQueryKey(p.id);
+      const cached = queryClient.getQueryData<AgricultureInsights>(key);
+      const level = cached?.droughtRisk?.level;
+      map[p.id] =
+        level === "moderate" || level === "high" || level === "critical"
+          ? (level as DroughtLevel)
+          : null;
+    });
+    return map;
+  }, [profiles, queryClient]);
+
   // Eagerly prefetch agriculture insights for every farm as soon as the profile
   // list is available. prefetchQuery is a no-op for any farm whose cache is
   // still fresh (staleTime 5 min), so revisiting the tab is cheap.
@@ -652,6 +704,7 @@ export default function AgricultureScreen() {
             sprayWindow={sprayWindowMap[item.id] ?? null}
             stageInfo={stageMap[item.id] ?? null}
             weatherInfo={weatherMap[item.id] ?? null}
+            droughtLevel={droughtMap[item.id] ?? null}
             onDelete={handleDelete}
           />
         )}
