@@ -258,7 +258,12 @@ function PeakRiskCallout({
     return isNight ? `${name} night` : name;
   }
 
-  const callouts: Array<{ sentence: string; color: string; icon: string }> = [];
+  const callouts: Array<{
+    sentence: string;
+    color: string;
+    icon: string;
+    recommendation: string;
+  }> = [];
 
   if (showFrost) {
     let worstIdx = -1;
@@ -272,10 +277,17 @@ function PeakRiskCallout({
     if (worstIdx >= 0) {
       const color =
         worstTemp < 28 ? "#0D2B6B" : worstTemp < 32 ? "#1A4E9A" : "#3B7DD8";
+      const recommendation =
+        worstTemp < 28
+          ? `Move potted plants indoors and cover all sensitive crops ${dayLabel(worstIdx, true)} — hard freeze expected.`
+          : worstTemp < 32
+          ? `Cover frost-sensitive crops ${dayLabel(worstIdx, true)} before temperatures drop below freezing.`
+          : `Monitor overnight temperatures and be ready to protect frost-sensitive crops.`;
       callouts.push({
         sentence: `Frost risk peaks ${dayLabel(worstIdx, true)} (${Math.round(worstTemp)}°F low)`,
         color,
         icon: "snow-outline",
+        recommendation,
       });
     }
   }
@@ -292,10 +304,17 @@ function PeakRiskCallout({
     if (worstIdx >= 0) {
       const color =
         worstTemp > 108 ? "#8B1A00" : worstTemp > 100 ? "#C03010" : "#E06020";
+      const recommendation =
+        worstTemp > 108
+          ? `Maximize irrigation ${dayLabel(worstIdx, false)} and delay field operations until temperatures ease.`
+          : worstTemp > 100
+          ? `Increase irrigation frequency and avoid midday field work ${dayLabel(worstIdx, false)}.`
+          : `Ensure adequate soil moisture and watch for wilting during peak afternoon heat.`;
       callouts.push({
         sentence: `Heat stress peaks ${dayLabel(worstIdx, false)} (${Math.round(worstTemp)}°F high)`,
         color,
         icon: "thermometer-outline",
+        recommendation,
       });
     }
   }
@@ -316,10 +335,17 @@ function PeakRiskCallout({
     if (worstIdx >= 0) {
       const color =
         worstChance < 5 ? "#8B2000" : worstChance < 15 ? "#B84010" : "#D08020";
+      const recommendation =
+        worstChance < 5
+          ? `Irrigate now — virtually no rainfall expected through ${dayLabel(worstIdx, false)}.`
+          : worstChance < 15
+          ? `Plan an irrigation cycle before ${dayLabel(worstIdx, false)} to maintain crop health.`
+          : `Monitor soil moisture closely and consider irrigation if levels are running low.`;
       callouts.push({
         sentence: `Driest day is ${dayLabel(worstIdx, false)} (${Math.round(worstChance)}% chance of rain)`,
         color,
         icon: "warning-outline",
+        recommendation,
       });
     }
   }
@@ -328,32 +354,44 @@ function PeakRiskCallout({
 
   return (
     <View style={{ gap: 6 }}>
-      {callouts.map(({ sentence, color, icon }, i) => (
+      {callouts.map(({ sentence, color, icon, recommendation }, i) => (
         <View
           key={i}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
             backgroundColor: color + "12",
             borderLeftWidth: 3,
             borderLeftColor: color,
             borderRadius: 8,
             paddingHorizontal: 12,
-            paddingVertical: 8,
+            paddingVertical: 10,
+            gap: 6,
           }}
         >
-          <Ionicons name={icon as any} size={14} color={color} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name={icon as any} size={14} color={color} />
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 13,
+                fontFamily: "Outfit_600SemiBold",
+                color,
+                lineHeight: 18,
+              }}
+            >
+              {sentence}
+            </Text>
+          </View>
           <Text
             style={{
-              flex: 1,
-              fontSize: 13,
-              fontFamily: "Outfit_500Medium",
+              fontSize: 12,
+              fontFamily: "Outfit_400Regular",
               color,
-              lineHeight: 18,
+              lineHeight: 17,
+              opacity: 0.85,
+              paddingLeft: 22,
             }}
           >
-            {sentence}
+            {recommendation}
           </Text>
         </View>
       ))}
