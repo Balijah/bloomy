@@ -13,7 +13,7 @@ import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -39,9 +39,18 @@ import {
   unregisterPushToken,
 } from "@workspace/api-client-react";
 
-const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "";
+function resolveApiBaseUrl() {
+  const explicitBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (explicitBaseUrl) return explicitBaseUrl.replace(/\/+$/, "");
+
+  const replitDomain = process.env.EXPO_PUBLIC_DOMAIN?.trim();
+  if (!replitDomain) return "";
+
+  const host = replitDomain.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return `https://${host}`;
+}
+
+const BASE_URL = resolveApiBaseUrl();
 
 const PUSH_TOKEN_STORAGE_KEY = "bloomy_push_token";
 
@@ -89,18 +98,28 @@ const queryClient = new QueryClient({
 });
 
 const clerkPublishableKey =
-  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-  process.env.CLERK_PUBLISHABLE_KEY ??
-  "";
+  (
+    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+    process.env.CLERK_PUBLISHABLE_KEY ??
+    ""
+  ).trim();
+const clerkProxyUrl = (process.env.EXPO_PUBLIC_CLERK_PROXY_URL ?? "").trim();
 
 // Keeps the stored Clerk token fresh for the background task (refreshed every 45 s)
 function AuthTokenBridge() {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth({
+    treatPendingAsSignedOut: false,
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-  }, [getToken]);
+    setAuthTokenGetter(async () => {
+      if (!isLoaded || !isSignedIn) return null;
+      return getToken();
+    });
+
+    return () => setAuthTokenGetter(null);
+  }, [getToken, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -226,6 +245,19 @@ function RootLayoutNav() {
   );
 }
 
+function MissingClerkConfigScreen() {
+  return (
+    <View style={missingConfigStyles.screen}>
+      <Text style={missingConfigStyles.brand}>Bloomy</Text>
+      <Text style={missingConfigStyles.title}>Clerk is not configured</Text>
+      <Text style={missingConfigStyles.body}>
+        Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY before starting or building the
+        mobile app.
+      </Text>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Outfit_400Regular,
@@ -242,8 +274,14 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
+  if (!clerkPublishableKey) return <MissingClerkConfigScreen />;
+
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+    <ClerkProvider
+      publishableKey={clerkPublishableKey}
+      proxyUrl={clerkProxyUrl || undefined}
+      tokenCache={tokenCache}
+    >
       <SafeAreaProvider>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
@@ -262,3 +300,30 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+const missingConfigStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 28,
+    backgroundColor: "#FAF8F5",
+  },
+  brand: {
+    marginBottom: 24,
+    fontFamily: "Outfit_700Bold",
+    fontSize: 32,
+    color: "#366441",
+  },
+  title: {
+    marginBottom: 8,
+    fontFamily: "Outfit_700Bold",
+    fontSize: 22,
+    color: "#232A23",
+  },
+  body: {
+    fontFamily: "Outfit_400Regular",
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#6E736E",
+  },
+});

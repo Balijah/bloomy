@@ -91,6 +91,14 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   return headers;
 }
 
+function headersToObject(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+}
+
 function getMediaType(headers: Headers): string | null {
   const value = headers.get("content-type");
   return value ? value.split(";", 1)[0].trim().toLowerCase() : null;
@@ -360,7 +368,13 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  // React Native's fetch implementation is most reliable with plain header
+  // objects. Passing a Headers instance can drop Authorization in native builds.
+  const response = await fetch(input, {
+    ...init,
+    method,
+    headers: headersToObject(headers),
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

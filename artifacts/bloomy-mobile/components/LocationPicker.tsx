@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as ExpoLocation from "expo-location";
 import React, { useRef, useState } from "react";
+import MapView, { type Region } from "react-native-maps";
 import {
   ActivityIndicator,
   Alert,
@@ -17,13 +18,6 @@ import {
   View,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
-
-type Region = {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
-};
 
 const US_CENTER: Region = {
   latitude: 39.5,
@@ -39,7 +33,7 @@ interface Props {
 
 export default function LocationPicker({ initialCoords, onCoordsChange }: Props) {
   const colors = useColors();
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapView | null>(null);
   const [locating, setLocating] = useState(false);
   const isExpoGo = Constants.appOwnership === "expo";
 
@@ -120,8 +114,10 @@ export default function LocationPicker({ initialCoords, onCoordsChange }: Props)
 
   return (
     <View style={s.wrapper}>
-      <View
+      <MapView
         ref={mapRef}
+        initialRegion={initial}
+        onRegionChangeComplete={handleRegionChangeComplete}
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -148,7 +144,12 @@ export default function LocationPicker({ initialCoords, onCoordsChange }: Props)
         {locating ? (
           <ActivityIndicator size="small" color={colors.primary} />
         ) : (
-          <Ionicons name="locate" size={20} color={colors.primary} />
+          <>
+            <Ionicons name="locate" size={18} color={colors.primary} />
+            <Text style={[s.locBtnText, { color: colors.primary }]}>
+              Current Location
+            </Text>
+          </>
         )}
       </Pressable>
 
@@ -232,16 +233,23 @@ const s = StyleSheet.create({
     position: "absolute",
     top: 12,
     right: 12,
-    width: 40,
     height: 40,
+    minWidth: 40,
+    paddingHorizontal: 12,
     borderRadius: 20,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
+  },
+  locBtnText: {
+    fontSize: 12,
+    fontFamily: "Outfit_600SemiBold",
   },
   coordBadge: {
     position: "absolute",

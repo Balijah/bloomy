@@ -34,14 +34,17 @@ interface AlertItem {
   title: string;
   message: string;
   severity?: string | null;
-  alertType?: string;
+  type?: string;
   isRead: boolean;
   farmProfileId?: number | null;
 }
 
 const SEVERITY_PRIORITY: Record<string, number> = {
+  critical: 4,
   extreme: 4,
+  warning: 3,
   severe: 3,
+  watch: 2,
   moderate: 2,
   minor: 1,
 };
@@ -57,8 +60,8 @@ async function fireNotificationsForAlerts(alerts: AlertItem[]): Promise<void> {
 
   const sorted = [...newAlerts].sort(
     (a, b) =>
-      (SEVERITY_PRIORITY[b.severity ?? "minor"] ?? 1) -
-      (SEVERITY_PRIORITY[a.severity ?? "minor"] ?? 1)
+      (SEVERITY_PRIORITY[b.severity ?? "watch"] ?? 1) -
+      (SEVERITY_PRIORITY[a.severity ?? "watch"] ?? 1)
   );
 
   if (sorted.length === 1) {

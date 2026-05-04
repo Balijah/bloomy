@@ -5,10 +5,13 @@ import {
   useCreateLocation,
   useGetAlertPreferences,
   useUpdateAlertPreferences,
+  getGetDashboardSummaryQueryKey,
+  getGetLocationsQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ExpoLocation from "expo-location";
 import { Linking } from "react-native";
 import React, { useState } from "react";
 import {
@@ -24,6 +27,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useGeofencing } from "@/contexts/GeofencingContext";
@@ -39,6 +43,32 @@ const TIER_LABELS: Record<string, { label: string; color: string }> = {
   grower: { label: "Grower", color: "#366441" },
   grower_pro: { label: "Grower Pro", color: "#CC9133" },
 };
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
+async function getCurrentLocationName(lat: number, lng: number): Promise<string> {
+  try {
+    const [address] = await ExpoLocation.reverseGeocodeAsync({
+      latitude: lat,
+      longitude: lng,
+    });
+    const city = address?.city ?? address?.subregion ?? address?.district;
+    const region = address?.region;
+
+    if (city && region) return `${city}, ${region}`;
+    if (city) return city;
+    if (region) return region;
+  } catch {
+    // Reverse geocoding is best-effort; coordinates are still usable.
+  }
+
+  return "Current location";
+}
 
 function SettingRow({
   icon,
@@ -174,6 +204,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { signOut } = useAuth();
+  const queryClient = useQueryClient();
   const {
     permission,
     enabled,
@@ -200,6 +231,7 @@ export default function SettingsScreen() {
   const [locName, setLocName] = useState("");
   const [locLat, setLocLat] = useState("");
   const [locLng, setLocLng] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
   const [sprayAlertsEnabled, setSprayAlertsEnabledState] = useState(true);
   const [peakRiskAlertsEnabled, setPeakRiskAlertsEnabledState] = useState(true);
 
@@ -273,6 +305,43 @@ export default function SettingsScreen() {
     updatePrefs.mutate({ data: { digestMinSeverity: sev } });
   }
 
+  async function handleUseCurrentLocation() {
+    setIsLocating(true);
+
+    try {
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Location permission needed",
+          "Allow location access in Settings to use your current position."
+        );
+        return;
+      }
+
+      const position = await ExpoLocation.getCurrentPositionAsync({
+        accuracy: ExpoLocation.Accuracy.Balanced,
+      });
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      setLocLat(lat.toFixed(6));
+      setLocLng(lng.toFixed(6));
+
+      if (!locName.trim()) {
+        setLocName(await getCurrentLocationName(lat, lng));
+      }
+
+      Haptics.selectionAsync();
+    } catch {
+      Alert.alert(
+        "Location unavailable",
+        "Could not get your current location. You can enter coordinates manually or set a simulated location from the Simulator menu."
+      );
+    } finally {
+      setIsLocating(false);
+    }
+  }
+
   async function handleSignOut() {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
@@ -309,13 +378,20 @@ export default function SettingsScreen() {
       {
         onSuccess: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() });
+          queryClient.invalidateQueries({
+            queryKey: getGetDashboardSummaryQueryKey(),
+          });
           setAddingLocation(false);
           setLocName("");
           setLocLat("");
           setLocLng("");
         },
-        onError: () => {
-          Alert.alert("Error", "Failed to add location.");
+        onError: (error) => {
+          Alert.alert(
+            "Could not add location",
+            getErrorMessage(error, "Failed to add location.")
+          );
         },
       }
     );
@@ -889,6 +965,24 @@ export default function SettingsScreen() {
               onChangeText={setLocName}
               testID="input-location-name"
             />
+            <Pressable
+              style={({ pressed }) => [
+                s(colors).useCurrentLocBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={handleUseCurrentLocation}
+              disabled={isLocating}
+              testID="button-use-current-location"
+            >
+              {isLocating ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="locate" size={17} color={colors.primary} />
+              )}
+              <Text style={s(colors).useCurrentLocText}>
+                {isLocating ? "Finding current location..." : "Use Current Location"}
+              </Text>
+            </Pressable>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TextInput
                 style={[s(colors).locInput, { flex: 1 }]}
@@ -1109,6 +1203,22 @@ const s = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Outfit_400Regular",
       color: colors.foreground,
       backgroundColor: colors.background,
+    },
+    useCurrentLocBtn: {
+      height: 44,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    useCurrentLocText: {
+      fontSize: 14,
+      fontFamily: "Outfit_600SemiBold",
+      color: colors.primary,
     },
     saveLocBtn: {
       height: 46,

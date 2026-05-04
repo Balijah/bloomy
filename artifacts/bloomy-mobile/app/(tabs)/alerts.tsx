@@ -41,6 +41,9 @@ const ALERT_TYPE_ICONS: Record<string, string> = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
+  critical: "#F23030",
+  warning: "#F07030",
+  watch: "#EAAC30",
   extreme: "#F23030",
   severe: "#F07030",
   moderate: "#EAAC30",
@@ -184,9 +187,9 @@ export default function AlertsScreen() {
         }
         renderItem={({ item }) => {
           const iconName =
-            ALERT_TYPE_ICONS[item.alertType ?? ""] ?? "warning-outline";
+            ALERT_TYPE_ICONS[item.type ?? ""] ?? "warning-outline";
           const severityColor =
-            SEVERITY_COLORS[item.severity ?? "minor"] ?? SEVERITY_COLORS.minor;
+            SEVERITY_COLORS[item.severity ?? "watch"] ?? SEVERITY_COLORS.watch;
           return (
             <View
               style={[
@@ -230,7 +233,7 @@ export default function AlertsScreen() {
                 </Text>
                 <Text style={s(colors).alertTime}>
                   {format(
-                    parseISO(item.createdAt as unknown as string),
+                    parseISO(item.triggeredAt),
                     "MMM d · h:mm a"
                   )}
                 </Text>

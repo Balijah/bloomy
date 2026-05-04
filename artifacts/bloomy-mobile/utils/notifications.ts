@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Alert } from "@workspace/api-client-react";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
@@ -8,7 +9,8 @@ const SEEN_IDS_KEY = "bloomy_seen_alert_ids";
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: true,
     }),
@@ -42,19 +44,17 @@ export async function clearBadge(): Promise<void> {
   await setBadgeCount(0);
 }
 
-interface AlertItem {
-  id: number;
-  title: string;
-  message: string;
-  severity?: string | null;
-  alertType?: string;
-  isRead: boolean;
-  createdAt: unknown;
-}
+type AlertItem = Pick<
+  Alert,
+  "id" | "title" | "message" | "severity" | "type" | "isRead" | "triggeredAt"
+>;
 
 const SEVERITY_PRIORITY: Record<string, number> = {
+  critical: 4,
   extreme: 4,
+  warning: 3,
   severe: 3,
+  watch: 2,
   moderate: 2,
   minor: 1,
 };
@@ -81,8 +81,8 @@ export async function notifyNewAlerts(alerts: AlertItem[]): Promise<void> {
   // Sort by severity (highest first)
   const sorted = [...newAlerts].sort(
     (a, b) =>
-      (SEVERITY_PRIORITY[b.severity ?? "minor"] ?? 1) -
-      (SEVERITY_PRIORITY[a.severity ?? "minor"] ?? 1)
+      (SEVERITY_PRIORITY[b.severity ?? "watch"] ?? 1) -
+      (SEVERITY_PRIORITY[a.severity ?? "watch"] ?? 1)
   );
 
   if (sorted.length === 1) {
