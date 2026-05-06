@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { useSignIn, useSignUp } from "@clerk/expo/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -26,9 +26,12 @@ type ClerkFactor = {
   emailAddressId?: string;
 };
 
+const RATE_LIMIT_COOLDOWN_SECONDS = 30;
+
 function messageFromClerkError(error: unknown) {
-  const clerkErrors = (error as { errors?: Array<{ longMessage?: string; message?: string }> })
-    ?.errors;
+  const clerkErrors = (
+    error as { errors?: Array<{ longMessage?: string; message?: string }> }
+  )?.errors;
   if (Array.isArray(clerkErrors) && clerkErrors.length > 0) {
     return clerkErrors
       .map((item) => item.longMessage || item.message)
@@ -42,6 +45,33 @@ function clerkErrorCodes(error: unknown) {
   const clerkErrors = (error as { errors?: Array<{ code?: string }> })?.errors;
   if (!Array.isArray(clerkErrors)) return [];
   return clerkErrors.map((item) => item.code).filter(Boolean);
+}
+
+function isRateLimitError(error: unknown) {
+  const record = error as {
+    status?: number;
+    statusCode?: number;
+    errors?: Array<{
+      code?: string;
+      longMessage?: string;
+      message?: string;
+    }>;
+  };
+  if (record?.status === 429 || record?.statusCode === 429) return true;
+
+  const clerkErrors = record?.errors;
+  if (!Array.isArray(clerkErrors)) return false;
+
+  return clerkErrors.some((item) => {
+    const text = `${item.code ?? ""} ${item.longMessage ?? ""} ${
+      item.message ?? ""
+    }`.toLowerCase();
+    return (
+      text.includes("too many") ||
+      text.includes("rate limit") ||
+      text.includes("rate_limit")
+    );
+  });
 }
 
 function getSupportedFactors(resource: unknown): ClerkFactor[] {
@@ -82,10 +112,19 @@ export default function SignInScreen() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   const ready = isLoaded && signInLoaded && signUpLoaded;
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
   const styles = createStyles(colors, insets);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setCooldownSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [cooldownSeconds]);
 
   if (!ready) {
     return (
@@ -107,6 +146,18 @@ export default function SignInScreen() {
     setEmailAddressId(null);
     setNotice("");
     setError("");
+    setCooldownSeconds(0);
+  }
+
+  function handleAuthError(err: unknown) {
+    if (isRateLimitError(err)) {
+      setCooldownSeconds(RATE_LIMIT_COOLDOWN_SECONDS);
+      setError(
+        "Clerk is rate-limiting sign-in attempts. Wait a bit before trying again.",
+      );
+      return;
+    }
+    setError(messageFromClerkError(err));
   }
 
   async function activateSession(sessionId?: string | null) {
@@ -195,7 +246,7 @@ export default function SignInScreen() {
         setError("Create a password to finish sign-up.");
         return;
       }
-      setError(messageFromClerkError(err));
+      handleAuthError(err);
     } finally {
       setSubmitting(false);
     }
@@ -236,7 +287,7 @@ export default function SignInScreen() {
       setCode("");
       setNotice(`Enter the verification code sent to ${normalizedEmail}.`);
     } catch (err) {
-      setError(messageFromClerkError(err));
+      handleAuthError(err);
     } finally {
       setSubmitting(false);
     }
@@ -282,7 +333,7 @@ export default function SignInScreen() {
 
       setError("Additional information is required to finish sign-up.");
     } catch (err) {
-      setError(messageFromClerkError(err));
+      handleAuthError(err);
     } finally {
       setSubmitting(false);
     }
@@ -309,14 +360,17 @@ export default function SignInScreen() {
       }
       setNotice(`A new code was sent to ${normalizedEmail}.`);
     } catch (err) {
-      setError(messageFromClerkError(err));
+      handleAuthError(err);
     } finally {
       setSubmitting(false);
     }
   }
 
+  const isSubmitDisabled = submitting || cooldownSeconds > 0;
   const submitLabel =
-    step === "email"
+    cooldownSeconds > 0
+      ? `Try again in ${cooldownSeconds}s`
+      : step === "email"
       ? mode === "signIn"
         ? "Continue"
         : "Create Account"
@@ -444,11 +498,11 @@ export default function SignInScreen() {
 
           <Pressable
             accessibilityRole="button"
-            disabled={submitting}
+            disabled={isSubmitDisabled}
             onPress={submitAction}
             style={({ pressed }) => [
               styles.primaryButton,
-              (pressed || submitting) && styles.primaryButtonPressed,
+              (pressed || isSubmitDisabled) && styles.primaryButtonPressed,
             ]}
           >
             {submitting ? (
@@ -468,7 +522,7 @@ export default function SignInScreen() {
           {step === "code" ? (
             <Pressable
               accessibilityRole="button"
-              disabled={submitting}
+              disabled={isSubmitDisabled}
               onPress={handleResendCode}
               style={styles.secondaryButton}
             >

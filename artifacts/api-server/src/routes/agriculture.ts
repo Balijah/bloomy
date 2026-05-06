@@ -19,6 +19,12 @@ import { fetchForecast, computeAgricultureInsights } from "../lib/weather";
 
 const router: IRouter = Router();
 
+function toPostgresDate(value: Date | string | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return value;
+}
+
 async function getUserId(req: any): Promise<number> {
   const auth = getAuth(req);
   const email = auth.sessionClaims?.email as string ?? "";
@@ -54,8 +60,8 @@ router.post("/agriculture/farm-profiles", requireAuth, async (req, res): Promise
     userId,
     acreage: parsed.data.acreage ?? null,
     soilType: parsed.data.soilType ?? null,
-    plantingDate: parsed.data.plantingDate ? String(parsed.data.plantingDate) : null,
-    harvestDate: parsed.data.harvestDate ? String(parsed.data.harvestDate) : null,
+    plantingDate: toPostgresDate(parsed.data.plantingDate),
+    harvestDate: toPostgresDate(parsed.data.harvestDate),
     yieldGoal: parsed.data.yieldGoal ?? null,
     cropPrice: parsed.data.cropPrice ?? null,
     costPerAcre: parsed.data.costPerAcre ?? null,
@@ -106,8 +112,8 @@ router.patch("/agriculture/farm-profiles/:id", requireAuth, async (req, res): Pr
   if (parsed.data.cropType !== undefined) updateData.cropType = parsed.data.cropType;
   if (parsed.data.acreage !== undefined) updateData.acreage = parsed.data.acreage ?? null;
   if (parsed.data.soilType !== undefined) updateData.soilType = parsed.data.soilType ?? null;
-  if (parsed.data.plantingDate !== undefined) updateData.plantingDate = parsed.data.plantingDate ? String(parsed.data.plantingDate) : null;
-  if (parsed.data.harvestDate !== undefined) updateData.harvestDate = parsed.data.harvestDate ? String(parsed.data.harvestDate) : null;
+  if (parsed.data.plantingDate !== undefined) updateData.plantingDate = toPostgresDate(parsed.data.plantingDate);
+  if (parsed.data.harvestDate !== undefined) updateData.harvestDate = toPostgresDate(parsed.data.harvestDate);
   if (parsed.data.yieldGoal !== undefined) updateData.yieldGoal = parsed.data.yieldGoal ?? null;
   if (parsed.data.cropPrice !== undefined) updateData.cropPrice = parsed.data.cropPrice ?? null;
   if (parsed.data.costPerAcre !== undefined) updateData.costPerAcre = parsed.data.costPerAcre ?? null;

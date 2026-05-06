@@ -1,4 +1,9 @@
-import express, { type Express } from "express";
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -52,6 +57,18 @@ app.use(
 );
 
 app.use("/api", router);
+app.use(
+  "/api",
+  (err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+
+    logger.error({ err }, "Unhandled API error");
+    res.status(500).json({ error: "Internal server error" });
+  },
+);
 
 if (process.env.NODE_ENV === "production") {
   const runtimeDir = path.dirname(fileURLToPath(import.meta.url));

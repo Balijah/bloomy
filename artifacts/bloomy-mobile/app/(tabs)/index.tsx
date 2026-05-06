@@ -1,16 +1,23 @@
 import {
+  useGetCurrentWeather,
   useGetDashboardSummary,
   useGetForecast,
   useGetHourlyForecast,
+  useGetLocations,
   useGetMe,
+  getGetCurrentWeatherQueryKey,
   getGetForecastQueryKey,
+  getGetMeQueryKey,
+  getGetDashboardSummaryQueryKey,
   getGetHourlyForecastQueryKey,
+  getGetLocationsQueryKey,
 } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { format, parseISO } from "date-fns";
-import React from "react";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -63,12 +70,51 @@ function statStyles(colors: ReturnType<typeof useColors>) {
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { data: user } = useGetMe();
-  const { data: summary, isLoading, refetch, isRefetching } = useGetDashboardSummary();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const canFetchProtectedData = authLoaded && isSignedIn;
+  const { data: user } = useGetMe({
+    query: { enabled: canFetchProtectedData, queryKey: getGetMeQueryKey() },
+  });
+  const {
+    data: summary,
+    isLoading: isSummaryLoading,
+    refetch: refetchSummary,
+    isRefetching: isSummaryRefetching,
+  } =
+    useGetDashboardSummary(undefined, {
+      query: {
+        enabled: canFetchProtectedData,
+        queryKey: getGetDashboardSummaryQueryKey(),
+      },
+    });
+  const {
+    data: savedLocations,
+    isLoading: areLocationsLoading,
+    refetch: refetchLocations,
+    isRefetching: areLocationsRefetching,
+  } = useGetLocations({
+    query: {
+      enabled: canFetchProtectedData,
+      queryKey: getGetLocationsQueryKey(),
+    },
+  });
 
-  const lat = summary?.location?.lat ?? 0;
-  const lng = summary?.location?.lng ?? 0;
-  const hasLocation = !!summary?.location;
+  const fallbackLocation = savedLocations?.find((loc) => loc.isDefault) ?? savedLocations?.[0];
+  const selectedLocation = summary?.location ?? fallbackLocation;
+  const lat = selectedLocation?.lat ?? 0;
+  const lng = selectedLocation?.lng ?? 0;
+  const hasLocation = !!selectedLocation;
+  const isFree = !user?.subscriptionTier || user.subscriptionTier === "free";
+
+  const { data: currentWeather } = useGetCurrentWeather(
+    { lat, lng },
+    {
+      query: {
+        enabled: hasLocation && !summary?.location,
+        queryKey: getGetCurrentWeatherQueryKey({ lat, lng }),
+      },
+    }
+  );
 
   const { data: forecast } = useGetForecast(
     { lat, lng },
@@ -77,11 +123,28 @@ export default function DashboardScreen() {
 
   const { data: hourly } = useGetHourlyForecast(
     { lat, lng },
-    { query: { enabled: hasLocation, queryKey: getGetHourlyForecastQueryKey({ lat, lng }) } }
+    {
+      query: {
+        enabled: hasLocation && !isFree,
+        queryKey: getGetHourlyForecastQueryKey({ lat, lng }),
+      },
+    }
   );
 
-  const isFree = !user?.subscriptionTier || user.subscriptionTier === "free";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const isLoading = (isSummaryLoading || areLocationsLoading) && !hasLocation;
+  const isRefetching = isSummaryRefetching || areLocationsRefetching;
+  const refetch = useCallback(() => {
+    if (!canFetchProtectedData) return;
+    refetchSummary();
+    refetchLocations();
+  }, [canFetchProtectedData, refetchLocations, refetchSummary]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   if (isLoading) {
     return (
@@ -91,7 +154,7 @@ export default function DashboardScreen() {
     );
   }
 
-  if (!summary?.location) {
+  if (!hasLocation) {
     return (
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
@@ -114,8 +177,16 @@ export default function DashboardScreen() {
     );
   }
 
-  const wx = summary.currentWeather;
-  const alerts = summary.activeAlerts ?? [];
+  const wx = summary?.location ? summary.currentWeather : currentWeather;
+  if (!wx) {
+    return (
+      <View style={[s(colors).flex, { justifyContent: "center", alignItems: "center", backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  const alerts = summary?.activeAlerts ?? [];
 
   return (
     <ScrollView
@@ -136,7 +207,7 @@ export default function DashboardScreen() {
         )}
         <View style={s(colors).locationRow}>
           <Ionicons name="location" size={14} color="rgba(250,248,245,0.8)" />
-          <Text style={s(colors).locationName}>{summary.location.name}</Text>
+          <Text style={s(colors).locationName}>{selectedLocation.name}</Text>
         </View>
         <View style={s(colors).tempRow}>
           <WeatherIcon code={wx.weatherCode} isDay={wx.isDay} size={56} color="rgba(250,248,245,0.9)" />

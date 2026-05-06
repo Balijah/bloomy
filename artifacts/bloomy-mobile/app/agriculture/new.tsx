@@ -2,13 +2,14 @@ import {
   useCreateLocation,
   useCreateFarmProfile,
   useGetLocations,
+  getGetDashboardSummaryQueryKey,
   getGetLocationsQueryKey,
   getGetFarmProfilesQueryKey,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -109,6 +110,7 @@ export default function NewFarmScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const queryClient = useQueryClient();
+  const initializedLocationModeRef = useRef(false);
 
   const { data: savedLocations } = useGetLocations();
   const createLocation = useCreateLocation();
@@ -131,6 +133,14 @@ export default function NewFarmScreen() {
   const [plantingDate, setPlantingDate] = useState("");
 
   const isSaving = createLocation.isPending || createFarmProfile.isPending;
+
+  useEffect(() => {
+    if (initializedLocationModeRef.current || !savedLocations?.length) return;
+    const preferredLocation = savedLocations.find((loc) => loc.isDefault) ?? savedLocations[0];
+    initializedLocationModeRef.current = true;
+    setLocationMode("existing");
+    setSelectedLocationId(preferredLocation.id);
+  }, [savedLocations]);
 
   // ─── Step 1 validation ───────────────────────────────────────────────────
   function step1Valid() {
@@ -166,7 +176,10 @@ export default function NewFarmScreen() {
           },
         });
         locationId = loc.id;
-        await queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetLocationsQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        ]);
       } else {
         if (!selectedLocationId) return;
         locationId = selectedLocationId;
@@ -190,6 +203,18 @@ export default function NewFarmScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e: any) {
+      if (e?.status === 403 && locationMode === "new" && savedLocations?.length) {
+        const preferredLocation = savedLocations.find((loc) => loc.isDefault) ?? savedLocations[0];
+        setLocationMode("existing");
+        setSelectedLocationId(preferredLocation.id);
+        setStep(1);
+        Alert.alert(
+          "Use saved location",
+          "Your Free plan includes one saved location. I selected it for this farm profile."
+        );
+        return;
+      }
+
       Alert.alert(
         "Could not save",
         e?.message ?? "Something went wrong. Please try again."
