@@ -5,6 +5,7 @@ import {
   useCreateLocation,
   useGetAlertPreferences,
   useUpdateAlertPreferences,
+  getGetAlertPreferencesQueryKey,
   getGetDashboardSummaryQueryKey,
   getGetLocationsQueryKey,
 } from "@workspace/api-client-react";
@@ -302,7 +303,20 @@ export default function SettingsScreen() {
 
   function handleSetSeverity(sev: "critical" | "high" | "all") {
     Haptics.selectionAsync();
-    updatePrefs.mutate({ data: { digestMinSeverity: sev } });
+    const queryKey = getGetAlertPreferencesQueryKey();
+    queryClient.setQueryData(queryKey, (current: unknown) =>
+      current && typeof current === "object"
+        ? { ...(current as Record<string, unknown>), digestMinSeverity: sev }
+        : current
+    );
+    updatePrefs.mutate(
+      { data: { digestMinSeverity: sev } },
+      {
+        onError: () => {
+          queryClient.invalidateQueries({ queryKey });
+        },
+      }
+    );
   }
 
   async function handleUseCurrentLocation() {

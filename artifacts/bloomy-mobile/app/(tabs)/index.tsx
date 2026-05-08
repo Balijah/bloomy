@@ -33,39 +33,36 @@ import { useColors } from "@/hooks/useColors";
 import { WeatherIcon } from "@/components/WeatherIcon";
 
 function WeatherStat({ label, value, icon }: { label: string; value: string; icon: string }) {
-  const colors = useColors();
   return (
-    <View style={statStyles(colors).container}>
-      <Ionicons name={icon as any} size={18} color={colors.mutedForeground} />
-      <Text style={statStyles(colors).value}>{value}</Text>
-      <Text style={statStyles(colors).label}>{label}</Text>
+    <View style={statStyles.container}>
+      <Ionicons name={icon as any} size={18} color="rgba(250,248,245,0.72)" />
+      <Text style={statStyles.value}>{value}</Text>
+      <Text style={statStyles.label}>{label}</Text>
     </View>
   );
 }
 
-function statStyles(colors: ReturnType<typeof useColors>) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 16,
-    },
-    value: {
-      fontSize: 18,
-      fontFamily: "Outfit_600SemiBold",
-      color: colors.foreground,
-      marginTop: 4,
-    },
-    label: {
-      fontSize: 11,
-      fontFamily: "Outfit_400Regular",
-      color: colors.mutedForeground,
-      marginTop: 2,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
-  });
-}
+const statStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  value: {
+    fontSize: 18,
+    fontFamily: "Outfit_600SemiBold",
+    color: "#FAF8F5",
+    marginTop: 4,
+  },
+  label: {
+    fontSize: 11,
+    fontFamily: "Outfit_400Regular",
+    color: "rgba(250,248,245,0.68)",
+    marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+});
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -187,124 +184,135 @@ export default function DashboardScreen() {
   }
 
   const alerts = summary?.activeAlerts ?? [];
+  const heroColors = wx.isDay
+    ? (["#2F6A40", "#4E9360"] as const)
+    : (["#172019", "#2E3D32"] as const);
+  const forecastDays = forecast ? (isFree ? forecast.slice(0, 7) : forecast) : [];
 
   return (
-    <ScrollView
-      style={[s(colors).flex, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primaryForeground} />}
-    >
-      {/* Hero weather card */}
-      <LinearGradient
-        colors={wx.isDay ? ["#366441", "#4D8A5E"] : ["#1A201A", "#2C342C"]}
-        style={[s(colors).hero, { paddingTop: topPad + 16 }]}
+    <View style={[s(colors).flex, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={[s(colors).flex, { backgroundColor: colors.background }]}
+        contentContainerStyle={{ backgroundColor: colors.background }}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primaryForeground} />}
       >
-        {alerts.length > 0 && (
-          <View style={s(colors).alertBanner}>
-            <Ionicons name="warning" size={14} color="#FAF8F5" />
-            <Text style={s(colors).alertBannerText}>{alerts.length} active alert{alerts.length > 1 ? "s" : ""}</Text>
+        {/* Hero weather card */}
+        <LinearGradient
+          colors={heroColors}
+          style={[s(colors).hero, { paddingTop: topPad + 18 }]}
+        >
+          {alerts.length > 0 && (
+            <View style={s(colors).alertBanner}>
+              <Ionicons name="warning" size={14} color="#FAF8F5" />
+              <Text style={s(colors).alertBannerText}>{alerts.length} active alert{alerts.length > 1 ? "s" : ""}</Text>
+            </View>
+          )}
+          <View style={s(colors).locationRow}>
+            <Ionicons name="location" size={14} color="rgba(250,248,245,0.82)" />
+            <Text style={s(colors).locationName}>{selectedLocation.name}</Text>
           </View>
-        )}
-        <View style={s(colors).locationRow}>
-          <Ionicons name="location" size={14} color="rgba(250,248,245,0.8)" />
-          <Text style={s(colors).locationName}>{selectedLocation.name}</Text>
-        </View>
-        <View style={s(colors).tempRow}>
-          <WeatherIcon code={wx.weatherCode} isDay={wx.isDay} size={56} color="rgba(250,248,245,0.9)" />
-          <Text style={s(colors).temp}>{Math.round(wx.temperature)}°</Text>
-        </View>
-        <Text style={s(colors).description}>{wx.weatherDescription}</Text>
-        <Text style={s(colors).feelsLike}>Feels like {Math.round(wx.feelsLike)}°F</Text>
-
-        <View style={s(colors).statsRow}>
-          <WeatherStat label="Humidity" value={`${wx.humidity}%`} icon="water" />
-          <View style={s(colors).statDivider} />
-          <WeatherStat label="Wind" value={`${Math.round(wx.windSpeed)} mph`} icon="speedometer" />
-          <View style={s(colors).statDivider} />
-          <WeatherStat label="UV" value={`${wx.uvIndex}`} icon="sunny" />
-          <View style={s(colors).statDivider} />
-          <WeatherStat label="Precip" value={`${wx.precipitation.toFixed(1)} in`} icon="rainy" />
-        </View>
-      </LinearGradient>
-
-      {/* Hourly forecast strip */}
-      {hourly && hourly.length > 0 && (
-        <View style={s(colors).section}>
-          <Text style={s(colors).sectionTitle}>Hourly</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s(colors).hourlyScroll}>
-            {hourly.slice(0, 24).map((h, i) => (
-              <View key={i} style={s(colors).hourlyItem} testID={`hourly-${i}`}>
-                <Text style={s(colors).hourlyTime}>{format(parseISO(h.time), "ha")}</Text>
-                <WeatherIcon code={h.weatherCode} isDay={h.isDay} size={20} color={colors.primary} />
-                <Text style={s(colors).hourlyTemp}>{Math.round(h.temperature)}°</Text>
-                {h.precipitationProbability > 10 && (
-                  <Text style={s(colors).hourlyPrecip}>{h.precipitationProbability}%</Text>
-                )}
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {isFree && !hourly && (
-        <View style={s(colors).upsellCard}>
-          <Ionicons name="time-outline" size={24} color={colors.primary} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={s(colors).upsellTitle}>Hourly forecasts</Text>
-            <Text style={s(colors).upsellText}>Upgrade to Grower for 48-hour hourly data</Text>
+          <View style={s(colors).tempRow}>
+            <WeatherIcon code={wx.weatherCode} isDay={wx.isDay} size={56} color="rgba(250,248,245,0.92)" />
+            <Text style={s(colors).temp}>{Math.round(wx.temperature)}°</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
-        </View>
-      )}
+          <Text style={s(colors).description}>{wx.weatherDescription}</Text>
+          <Text style={s(colors).feelsLike}>Feels like {Math.round(wx.feelsLike)}°F</Text>
 
-      {/* 7/15-day forecast */}
-      {forecast && forecast.length > 0 && (
-        <View style={s(colors).section}>
-          <Text style={s(colors).sectionTitle}>{isFree ? "7-Day" : "15-Day"} Forecast</Text>
-          <View style={s(colors).forecastCard}>
-            {(isFree ? forecast.slice(0, 7) : forecast).map((d, i) => (
-              <View key={i} style={[s(colors).forecastRow, i > 0 && s(colors).forecastBorder]} testID={`forecast-day-${i}`}>
-                <Text style={s(colors).forecastDay}>
-                  {i === 0 ? "Today" : format(parseISO(d.date), "EEE")}
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", gap: 6 }}>
-                  <WeatherIcon code={d.weatherCode} isDay={true} size={18} color={colors.primary} />
-                  {d.precipitationProbability > 0 && (
-                    <Text style={s(colors).forecastPrecip}>{d.precipitationProbability}%</Text>
-                  )}
-                </View>
-                <View style={s(colors).forecastTemps}>
-                  <Text style={s(colors).forecastLow}>{Math.round(d.tempMin)}°</Text>
-                  <View style={s(colors).tempBar}>
-                    <View style={[s(colors).tempBarFill, {
-                      left: `${Math.max(0, (d.tempMin / Math.max(1, d.tempMax)) * 50)}%` as any,
-                    }]} />
+          <View style={s(colors).statsRow}>
+            <WeatherStat label="Humidity" value={`${wx.humidity}%`} icon="water" />
+            <View style={s(colors).statDivider} />
+            <WeatherStat label="Wind" value={`${Math.round(wx.windSpeed)} mph`} icon="speedometer" />
+            <View style={s(colors).statDivider} />
+            <WeatherStat label="UV" value={`${wx.uvIndex}`} icon="sunny" />
+            <View style={s(colors).statDivider} />
+            <WeatherStat label="Precip" value={`${wx.precipitation.toFixed(1)} in`} icon="rainy" />
+          </View>
+        </LinearGradient>
+
+        <View style={s(colors).body}>
+          {/* 7/15-day forecast */}
+          {forecastDays.length > 0 && (
+            <View style={s(colors).section}>
+              <Text style={s(colors).sectionTitle}>{isFree ? "7-Day Forecast" : "15-Day Forecast"}</Text>
+              <View style={s(colors).forecastCard}>
+                {forecastDays.map((d, i) => (
+                  <View key={i} style={[s(colors).forecastRow, i > 0 && s(colors).forecastBorder]} testID={`forecast-day-${i}`}>
+                    <Text style={s(colors).forecastDay}>
+                      {i === 0 ? "Today" : format(parseISO(d.date), "EEE")}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", gap: 6 }}>
+                      <WeatherIcon code={d.weatherCode} isDay={true} size={18} color={colors.primary} />
+                      {d.precipitationProbability > 0 && (
+                        <Text style={s(colors).forecastPrecip}>{d.precipitationProbability}%</Text>
+                      )}
+                    </View>
+                    <View style={s(colors).forecastTemps}>
+                      <Text style={s(colors).forecastLow}>{Math.round(d.tempMin)}°</Text>
+                      <View style={s(colors).tempBar}>
+                        <View style={[s(colors).tempBarFill, {
+                          left: `${Math.max(0, (d.tempMin / Math.max(1, d.tempMax)) * 50)}%` as any,
+                        }]} />
+                      </View>
+                      <Text style={s(colors).forecastHigh}>{Math.round(d.tempMax)}°</Text>
+                    </View>
                   </View>
-                  <Text style={s(colors).forecastHigh}>{Math.round(d.tempMax)}°</Text>
-                </View>
+                ))}
               </View>
-            ))}
-          </View>
 
-          {isFree && (
-            <Pressable
-              style={({ pressed }) => [s(colors).upsellCard, pressed && { opacity: 0.8 }]}
-              onPress={() => router.push("/(tabs)/settings")}
-              testID="button-upgrade-forecast"
-            >
-              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+              {isFree && (
+                <Pressable
+                  style={({ pressed }) => [s(colors).upsellCard, pressed && { opacity: 0.8 }]}
+                  onPress={() => router.push("/(tabs)/settings")}
+                  testID="button-upgrade-forecast"
+                >
+                  <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={s(colors).upsellTitle}>15-day outlook</Text>
+                    <Text style={s(colors).upsellText}>Upgrade to Grower for extended forecasts</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Hourly forecast strip */}
+          {hourly && hourly.length > 0 && (
+            <View style={s(colors).section}>
+              <Text style={s(colors).sectionTitle}>Hourly</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s(colors).hourlyScroll}>
+                {hourly.slice(0, 24).map((h, i) => (
+                  <View key={i} style={s(colors).hourlyItem} testID={`hourly-${i}`}>
+                    <Text style={s(colors).hourlyTime}>{format(parseISO(h.time), "ha")}</Text>
+                    <WeatherIcon code={h.weatherCode} isDay={h.isDay} size={20} color={colors.primary} />
+                    <Text style={s(colors).hourlyTemp}>{Math.round(h.temperature)}°</Text>
+                    {h.precipitationProbability > 10 && (
+                      <Text style={s(colors).hourlyPrecip}>{h.precipitationProbability}%</Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {isFree && !hourly && (
+            <View style={s(colors).upsellCard}>
+              <Ionicons name="time-outline" size={24} color={colors.primary} />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s(colors).upsellTitle}>15-day outlook</Text>
-                <Text style={s(colors).upsellText}>Upgrade to Grower for extended forecasts</Text>
+                <Text style={s(colors).upsellTitle}>Hourly forecasts</Text>
+                <Text style={s(colors).upsellText}>Upgrade to Grower for 48-hour hourly data</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
-            </Pressable>
+            </View>
           )}
-        </View>
-      )}
 
-      <View style={{ height: Platform.OS === "web" ? 84 + 16 : insets.bottom + 80 }} />
-    </ScrollView>
+          <View style={{ height: Platform.OS === "web" ? 84 + 16 : insets.bottom + 80 }} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -313,7 +321,15 @@ const s = (colors: ReturnType<typeof useColors>) =>
     flex: { flex: 1 },
     hero: {
       paddingHorizontal: 24,
-      paddingBottom: 24,
+      paddingBottom: 36,
+    },
+    body: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      marginTop: -20,
+      paddingTop: 6,
+      minHeight: 420,
     },
     alertBanner: {
       flexDirection: "row",
@@ -365,19 +381,21 @@ const s = (colors: ReturnType<typeof useColors>) =>
       fontSize: 14,
       fontFamily: "Outfit_400Regular",
       color: "rgba(250,248,245,0.7)",
-      marginBottom: 24,
+      marginBottom: 18,
     },
     statsRow: {
       flexDirection: "row",
-      backgroundColor: "rgba(0,0,0,0.2)",
+      backgroundColor: "rgba(15,31,21,0.28)",
       borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: "rgba(250,248,245,0.12)",
     },
     statDivider: {
       width: 1,
       backgroundColor: "rgba(250,248,245,0.15)",
       marginVertical: 12,
     },
-    section: { paddingHorizontal: 16, paddingTop: 20 },
+    section: { paddingHorizontal: 16, paddingTop: 18 },
     sectionTitle: {
       fontSize: 14,
       fontFamily: "Outfit_600SemiBold",

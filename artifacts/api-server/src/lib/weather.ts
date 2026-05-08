@@ -22,10 +22,6 @@ function mmToInches(mm: number): number {
   return Math.round((mm / 25.4) * 100) / 100;
 }
 
-function cToF(c: number): number {
-  return Math.round((c * 9 / 5 + 32) * 10) / 10;
-}
-
 function kmhToMph(kmh: number): number {
   return Math.round((kmh * 0.621371) * 10) / 10;
 }
@@ -78,7 +74,6 @@ export async function fetchForecast(lat: number, lng: number) {
       "wind_speed_10m_max", "wind_gusts_10m_max",
       "cloud_cover_mean", "uv_index_max",
       "sunrise", "sunset", "weather_code",
-      "soil_temperature_0cm", "soil_moisture_0_to_1cm",
       "et0_fao_evapotranspiration",
     ].join(","),
     temperature_unit: "fahrenheit",
@@ -109,8 +104,8 @@ export async function fetchForecast(lat: number, lng: number) {
     sunset: d.sunset[i] ?? "",
     weatherCode: d.weather_code[i] ?? 0,
     weatherDescription: wmoDescription(d.weather_code[i] ?? 0),
-    soilTemperature: d.soil_temperature_0cm ? cToF(d.soil_temperature_0cm[i]) : null,
-    soilMoisture: d.soil_moisture_0_to_1cm ? d.soil_moisture_0_to_1cm[i] : null,
+    soilTemperature: null,
+    soilMoisture: null,
     evapotranspiration: d.et0_fao_evapotranspiration ? d.et0_fao_evapotranspiration[i] : null,
   }));
 }

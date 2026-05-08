@@ -523,7 +523,7 @@ export default function AgricultureDetailScreen() {
     farmId,
     { query: { enabled: !!farmId, queryKey: getGetFarmProfileQueryKey(farmId) } }
   );
-  const { data: insights, isLoading: insightsLoading } =
+  const { data: insights, isLoading: insightsLoading, refetch: refetchInsights } =
     useGetAgricultureInsights(farmId, {
       query: {
         enabled: !!farmId,
@@ -685,7 +685,7 @@ export default function AgricultureDetailScreen() {
     );
   }
 
-  if (!profile || !insights) {
+  if (!profile) {
     return (
       <View
         style={{
@@ -727,6 +727,118 @@ export default function AgricultureDetailScreen() {
           </Text>
         </Pressable>
       </View>
+    );
+  }
+
+  if (!insights) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: Platform.OS === "web" ? 34 + 16 : insets.bottom + 24,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+            progressViewOffset={topPad}
+          />
+        }
+      >
+        <View style={[s.header, { paddingTop: topPad + 16 }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backBtn}
+            testID="button-back"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={s.title}>{profile.name}</Text>
+            <Text style={s.subtitle}>
+              {profile.cropType
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase())}
+            </Text>
+          </View>
+        </View>
+
+        <View style={s.section}>
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: colors.radius,
+              padding: 18,
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.muted,
+                marginBottom: 12,
+              }}
+            >
+              <Ionicons name="cloud-offline-outline" size={26} color={colors.primary} />
+            </View>
+            <Text
+              style={{
+                fontSize: 18,
+                fontFamily: "Outfit_600SemiBold",
+                color: colors.foreground,
+                textAlign: "center",
+              }}
+            >
+              Weather insights unavailable
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: "Outfit_400Regular",
+                color: colors.mutedForeground,
+                textAlign: "center",
+                lineHeight: 20,
+                marginTop: 8,
+              }}
+            >
+              The farm profile was saved, but Bloomy could not load crop-risk insights for it yet.
+            </Text>
+            <Pressable
+              onPress={() => refetchInsights()}
+              style={({ pressed }) => [
+                {
+                  marginTop: 16,
+                  backgroundColor: colors.primary,
+                  borderRadius: colors.radius,
+                  paddingHorizontal: 18,
+                  paddingVertical: 11,
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+              testID="button-retry-insights"
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontFamily: "Outfit_600SemiBold",
+                  color: "#fff",
+                }}
+              >
+                Retry insights
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 
