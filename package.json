@@ -13,7 +13,7 @@
     "set-subscription-tier": "pnpm --filter @workspace/scripts run set-subscription-tier",
     "start:api": "pnpm --filter @workspace/api-server run start",
     "start:deploy": "pnpm run start:api",
-    "typecheck:deploy": "pnpm run typecheck:libs && pnpm --filter @workspace/api-server --filter @workspace/bloomy-web --filter @workspace/bloomy-mobile --filter @workspace/scripts --if-present run typecheck",
+    "typecheck:deploy": "pnpm run typecheck:libs && pnpm --filter @workspace/api-server --filter @workspace/bloomy-web --filter @workspace/scripts --if-present run typecheck",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
