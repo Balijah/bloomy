@@ -2,6 +2,21 @@ import { logger } from "./logger";
 
 const BASE_URL = "https://api.open-meteo.com/v1/forecast";
 
+const DAILY_FORECAST_FIELDS = [
+  "temperature_2m_max", "temperature_2m_min",
+  "apparent_temperature_max", "apparent_temperature_min",
+  "precipitation_sum", "precipitation_probability_max",
+  "wind_speed_10m_max", "wind_gusts_10m_max",
+  "cloud_cover_mean", "uv_index_max",
+  "sunrise", "sunset", "weather_code",
+  "et0_fao_evapotranspiration",
+];
+
+const FALLBACK_DAILY_FORECAST_FIELDS = [
+  "temperature_2m_max", "temperature_2m_min",
+  "precipitation_sum", "weather_code",
+];
+
 const WMO_DESCRIPTIONS: Record<number, string> = {
   0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
   45: "Fog", 48: "Icy fog",
@@ -64,18 +79,40 @@ export async function fetchCurrentWeather(lat: number, lng: number) {
 }
 
 export async function fetchForecast(lat: number, lng: number) {
+  const data = await fetchForecastData(lat, lng, DAILY_FORECAST_FIELDS)
+    .catch(async (err: unknown) => {
+      logger.warn({ err }, "Open-Meteo primary forecast request failed; retrying with fallback fields");
+      return fetchForecastData(lat, lng, FALLBACK_DAILY_FORECAST_FIELDS);
+    });
+  const d = data.daily;
+
+  return d.time.map((date: string, i: number) => ({
+    date,
+    tempMax: d.temperature_2m_max[i],
+    tempMin: d.temperature_2m_min[i],
+    feelsLikeMax: d.apparent_temperature_max?.[i] ?? d.temperature_2m_max[i],
+    feelsLikeMin: d.apparent_temperature_min?.[i] ?? d.temperature_2m_min[i],
+    precipitation: d.precipitation_sum?.[i] ?? 0,
+    precipitationProbability: d.precipitation_probability_max?.[i] ?? 0,
+    windSpeedMax: d.wind_speed_10m_max?.[i] ?? 0,
+    windGustMax: d.wind_gusts_10m_max?.[i] ?? d.wind_speed_10m_max?.[i] ?? 0,
+    cloudCover: d.cloud_cover_mean?.[i] ?? 0,
+    uvIndexMax: d.uv_index_max?.[i] ?? 0,
+    sunrise: d.sunrise?.[i] ?? "",
+    sunset: d.sunset?.[i] ?? "",
+    weatherCode: d.weather_code?.[i] ?? 0,
+    weatherDescription: wmoDescription(d.weather_code?.[i] ?? 0),
+    soilTemperature: null,
+    soilMoisture: null,
+    evapotranspiration: d.et0_fao_evapotranspiration?.[i] ?? null,
+  }));
+}
+
+async function fetchForecastData(lat: number, lng: number, dailyFields: string[]) {
   const params = new URLSearchParams({
     latitude: lat.toString(),
     longitude: lng.toString(),
-    daily: [
-      "temperature_2m_max", "temperature_2m_min",
-      "apparent_temperature_max", "apparent_temperature_min",
-      "precipitation_sum", "precipitation_probability_max",
-      "wind_speed_10m_max", "wind_gusts_10m_max",
-      "cloud_cover_mean", "uv_index_max",
-      "sunrise", "sunset", "weather_code",
-      "et0_fao_evapotranspiration",
-    ].join(","),
+    daily: dailyFields.join(","),
     temperature_unit: "fahrenheit",
     wind_speed_unit: "mph",
     precipitation_unit: "inch",
@@ -84,30 +121,12 @@ export async function fetchForecast(lat: number, lng: number) {
   });
 
   const res = await fetch(`${BASE_URL}?${params}`);
-  if (!res.ok) throw new Error(`Open-Meteo error: ${res.status}`);
-  const data = await res.json() as any;
-  const d = data.daily;
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Open-Meteo error: ${res.status} ${body.slice(0, 500)}`);
+  }
 
-  return d.time.map((date: string, i: number) => ({
-    date,
-    tempMax: d.temperature_2m_max[i],
-    tempMin: d.temperature_2m_min[i],
-    feelsLikeMax: d.apparent_temperature_max[i],
-    feelsLikeMin: d.apparent_temperature_min[i],
-    precipitation: d.precipitation_sum[i] ?? 0,
-    precipitationProbability: d.precipitation_probability_max[i] ?? 0,
-    windSpeedMax: d.wind_speed_10m_max[i] ?? 0,
-    windGustMax: d.wind_gusts_10m_max[i] ?? 0,
-    cloudCover: d.cloud_cover_mean[i] ?? 0,
-    uvIndexMax: d.uv_index_max[i] ?? 0,
-    sunrise: d.sunrise[i] ?? "",
-    sunset: d.sunset[i] ?? "",
-    weatherCode: d.weather_code[i] ?? 0,
-    weatherDescription: wmoDescription(d.weather_code[i] ?? 0),
-    soilTemperature: null,
-    soilMoisture: null,
-    evapotranspiration: d.et0_fao_evapotranspiration ? d.et0_fao_evapotranspiration[i] : null,
-  }));
+  return await res.json() as any;
 }
 
 export async function fetchHourlyForecast(lat: number, lng: number) {
