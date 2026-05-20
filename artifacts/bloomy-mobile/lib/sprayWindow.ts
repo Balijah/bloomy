@@ -133,23 +133,36 @@ function worstRating(ratings: SprayRating[]): SprayRating {
 const SHORT_DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function parseDateLabels(iso: string): { dayLabel: string; dateLabel: string } {
-  const [year, month, day] = iso.split("-").map(Number);
-  const d = new Date(year, month - 1, day);
+function parseDateLabels(iso: string | null | undefined): { dayLabel: string; dateLabel: string } {
+  const raw = typeof iso === "string" ? iso.slice(0, 10) : "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!match) {
+    return { dayLabel: "Day", dateLabel: "--" };
+  }
+
+  const [, yearRaw, monthRaw, dayRaw] = match;
+  const d = new Date(Number(yearRaw), Number(monthRaw) - 1, Number(dayRaw));
+  if (Number.isNaN(d.getTime())) {
+    return { dayLabel: "Day", dateLabel: "--" };
+  }
+
   return {
     dayLabel:  SHORT_DAYS[d.getDay()],
     dateLabel: `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}`,
   };
 }
 
-export function isoDate(dt: string | Date): string {
+export function isoDate(dt: string | Date | null | undefined): string {
+  if (!dt) return "";
   const s = typeof dt === "string" ? dt : dt.toISOString();
   return s.slice(0, 10);
 }
 
-export function hourOf(dt: string | Date): number {
+export function hourOf(dt: string | Date | null | undefined): number {
+  if (!dt) return -1;
   const s = typeof dt === "string" ? dt : dt.toISOString();
-  return parseInt(s.slice(11, 13), 10);
+  const hour = parseInt(s.slice(11, 13), 10);
+  return Number.isFinite(hour) ? hour : -1;
 }
 
 // ── Per-factor scorers ────────────────────────────────────────────────────────
@@ -440,7 +453,9 @@ export function computeSprayWindows(
     }
   }
 
-  const dates = temperatureDaily?.map((t) => t.date) ?? Object.keys(windMap);
+  const dates =
+    (temperatureDaily?.map((t) => t.date).filter((date): date is string => Boolean(date)) ??
+      Object.keys(windMap));
 
   const days = dates.map((date) => scoreDay(
     date,

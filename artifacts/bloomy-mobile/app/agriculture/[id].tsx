@@ -56,6 +56,7 @@ import YieldGoalCard from "@/components/YieldGoalCard";
 import YieldHistoryCard from "@/components/YieldHistoryCard";
 import InsuranceCard from "@/components/InsuranceCard";
 import InputCostCard from "@/components/InputCostCard";
+import BenchmarkPlannerCard from "@/components/BenchmarkPlannerCard";
 import RiskHistoryCard from "@/components/RiskHistoryCard";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -186,6 +187,24 @@ function droughtDayRisk(precipChance: number | undefined | null): DayRisk {
   return null;
 }
 
+function safeForecastDate(date: string | null | undefined): Date | null {
+  if (!date) return null;
+  const parsed = new Date(`${date}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function shortWeekday(date: string | null | undefined, fallbackIndex: number): string {
+  const parsed = safeForecastDate(date);
+  if (!parsed) return `Day ${fallbackIndex + 1}`;
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][parsed.getDay()] ?? `Day ${fallbackIndex + 1}`;
+}
+
+function shortDateLabel(date: string | null | undefined): string {
+  const parsed = safeForecastDate(date);
+  if (!parsed) return "";
+  return `${parsed.getMonth() + 1}/${parsed.getDate()}`;
+}
+
 const RISK_DOT_PALETTE: Record<string, Record<string, string>> = {
   frost:   { moderate: "#3B7DD8", high: "#1A4E9A", critical: "#0D2B6B" },
   heat:    { moderate: "#E06020", high: "#C03010", critical: "#8B1A00" },
@@ -256,8 +275,7 @@ function PeakRiskCallout({
   function dayLabel(i: number, isNight: boolean): string {
     if (i === 0) return isNight ? "tonight" : "today";
     if (i === 1) return isNight ? "tomorrow night" : "tomorrow";
-    const d = new Date(days7[i].date + "T12:00:00");
-    const name = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+    const name = shortWeekday(days7[i]?.date, i);
     return isNight ? `${name} night` : name;
   }
 
@@ -417,12 +435,11 @@ function RiskTimeline7Day({
 }) {
   const days = temperatureDaily.slice(0, 7).map((td, i) => {
     const precip = precipitationDaily[i];
-    const d = new Date(td.date + "T12:00:00");
     const dayLabel =
       i === 0
         ? "Today"
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+        : shortWeekday(td.date, i);
+    const dateLabel = shortDateLabel(td.date);
     return {
       dayLabel,
       dateLabel,
@@ -491,17 +508,19 @@ function RiskTimeline7Day({
                 color: "#999",
               }}
             >
-              {day.dayLabel.substring(0, 3)}
+              {(day.dayLabel || `Day ${i + 1}`).substring(0, 3)}
             </Text>
-            <Text
-              style={{
-                fontSize: 9,
-                fontFamily: "Outfit_400Regular",
-                color: "#BBB",
-              }}
-            >
-              {day.dateLabel}
-            </Text>
+            {day.dateLabel ? (
+              <Text
+                style={{
+                  fontSize: 9,
+                  fontFamily: "Outfit_400Regular",
+                  color: "#BBB",
+                }}
+              >
+                {day.dateLabel}
+              </Text>
+            ) : null}
           </View>
         ))}
       </View>
@@ -909,6 +928,17 @@ export default function AgricultureDetailScreen() {
             <Ionicons name="share-outline" size={17} color="#fff" />
           )}
         </Pressable>
+      </View>
+
+      {/* Benchmark Planner */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>Benchmark Planner</Text>
+        <BenchmarkPlannerCard
+          farmProfileId={farmId}
+          profile={profile}
+          inputCosts={inputCosts}
+          locationName={currentLocation?.name}
+        />
       </View>
 
       {/* Map — shows all farm locations with alert overlay */}

@@ -162,7 +162,7 @@ function DayTile({
           letterSpacing: 0.3,
         }}
       >
-        {day.dayLabel.toUpperCase()}
+        {(day.dayLabel || "Day").toUpperCase()}
       </Text>
       <View
         style={{
@@ -186,7 +186,7 @@ function DayTile({
           textAlign: "center",
         }}
       >
-        {day.dateLabel}
+        {day.dateLabel || "--"}
       </Text>
       <Text
         style={{
