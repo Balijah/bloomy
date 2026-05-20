@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { 
-  useGetFarmProfiles, 
-  useCreateFarmProfile, 
+import {
+  useGetFarmProfiles,
+  useCreateFarmProfile,
   useDeleteFarmProfile,
   useGetMe,
+  useGetLocations,
   getGetFarmProfilesQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +38,7 @@ export default function Agriculture() {
   const deleteProfile = useDeleteFarmProfile();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: locations = [] } = useGetLocations();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -74,33 +76,12 @@ export default function Agriculture() {
     }
   };
 
-  const isFree = user?.subscriptionTier === "free";
-
   if (isUserLoading || isProfilesLoading) {
     return (
       <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
-        </div>
-      </div>
-    );
-  }
-
-  if (isFree) {
-    return (
-      <div className="p-6 md:p-8 max-w-7xl mx-auto">
-        <div className="flex flex-col items-center text-center justify-center py-20 px-4">
-          <div className="h-20 w-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
-            <Sprout className="h-10 w-10" />
-          </div>
-          <h1 className="text-3xl font-bold mb-4">Agriculture Insights</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mb-8 leading-relaxed">
-            Upgrade to a Grower plan to unlock crop-specific forecasts, Growing Degree Days (GDD) tracking, and advanced risk indicators for your fields.
-          </p>
-          <Link href="/subscription">
-            <Button size="lg" className="rounded-full px-8">Upgrade to Grower</Button>
-          </Link>
         </div>
       </div>
     );
@@ -170,8 +151,17 @@ export default function Agriculture() {
                 )} />
                 <FormField control={form.control} name="locationId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location ID</FormLabel>
-                    <FormControl><Input type="number" placeholder="1" {...field} /></FormControl>
+                    <FormLabel>Location</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value ? String(field.value) : ""}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {locations.map(loc => (
+                          <SelectItem key={loc.id} value={String(loc.id)}>{loc.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )} />
