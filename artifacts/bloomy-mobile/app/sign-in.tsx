@@ -135,7 +135,7 @@ export default function SignInScreen() {
   }
 
   if (isSignedIn) {
-    return <Redirect href="/(tabs)/" />;
+    return <Redirect href="/(tabs)" />;
   }
 
   function resetFlow(nextMode = mode) {

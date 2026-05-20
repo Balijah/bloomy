@@ -13,6 +13,18 @@
       "distribution": "internal",
       "environment": "preview"
     },
+    "judge-android": {
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "judge-testflight": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": true
+    },
     "preview-simulator": {
       "environment": "preview",
       "ios": {
@@ -25,6 +37,9 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "judge-testflight": {
+      "ios": {}
+    }
   }
 }

@@ -1,10 +1,12 @@
 import {
   useCreateLocation,
   useCreateFarmProfile,
+  useCreateInputCost,
   useGetLocations,
   getGetDashboardSummaryQueryKey,
   getGetLocationsQueryKey,
   getGetFarmProfilesQueryKey,
+  getGetInputCostsQueryKey,
 } from "@workspace/api-client-react";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -43,6 +45,13 @@ const CROPS: Array<{ key: string; label: string; emoji: string }> = [
 ];
 
 const SOIL_TYPES = ["Clay", "Sandy", "Silt", "Loam", "Peat", "Chalk", "Other"];
+
+function parseOptionalNumber(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -115,6 +124,7 @@ export default function NewFarmScreen() {
   const { data: savedLocations } = useGetLocations();
   const createLocation = useCreateLocation();
   const createFarmProfile = useCreateFarmProfile();
+  const createInputCost = useCreateInputCost();
 
   // ── Step state ──
   const [step, setStep] = useState<1 | 2>(1);
@@ -131,8 +141,16 @@ export default function NewFarmScreen() {
   const [acreage, setAcreage] = useState("");
   const [soilType, setSoilType] = useState("");
   const [plantingDate, setPlantingDate] = useState("");
+  const [yieldGoal, setYieldGoal] = useState("");
+  const [cropPrice, setCropPrice] = useState("");
+  const [seedCost, setSeedCost] = useState("");
+  const [fertilizerCost, setFertilizerCost] = useState("");
+  const [chemicalCost, setChemicalCost] = useState("");
 
-  const isSaving = createLocation.isPending || createFarmProfile.isPending;
+  const isSaving =
+    createLocation.isPending ||
+    createFarmProfile.isPending ||
+    createInputCost.isPending;
 
   useEffect(() => {
     if (initializedLocationModeRef.current || !savedLocations?.length) return;
@@ -185,16 +203,61 @@ export default function NewFarmScreen() {
         locationId = selectedLocationId;
       }
 
-      await createFarmProfile.mutateAsync({
+      const parsedAcreage = parseOptionalNumber(acreage);
+      const parsedYieldGoal = parseOptionalNumber(yieldGoal);
+      const parsedCropPrice = parseOptionalNumber(cropPrice);
+      const parsedSeedCost = parseOptionalNumber(seedCost);
+      const parsedFertilizerCost = parseOptionalNumber(fertilizerCost);
+      const parsedChemicalCost = parseOptionalNumber(chemicalCost);
+      const totalPlannedCost =
+        (parsedSeedCost ?? 0) +
+        (parsedFertilizerCost ?? 0) +
+        (parsedChemicalCost ?? 0);
+
+      const profile = await createFarmProfile.mutateAsync({
         data: {
           locationId,
           name: farmName.trim(),
           cropType: cropType as any,
-          acreage: acreage ? parseFloat(acreage) : null,
+          acreage: parsedAcreage,
           soilType: soilType.trim() || null,
           plantingDate: plantingDate.trim() || null,
+          yieldGoal: parsedYieldGoal,
+          cropPrice: parsedCropPrice,
+          costPerAcre: totalPlannedCost > 0 ? totalPlannedCost : null,
         },
       });
+
+      const plannedCosts = [
+        { category: "seed", item: "Seed quote", value: parsedSeedCost },
+        {
+          category: "fertilizer",
+          item: "Fertilizer quote",
+          value: parsedFertilizerCost,
+        },
+        { category: "herbicide", item: "Chemical quote", value: parsedChemicalCost },
+      ].filter((item) => item.value != null && item.value > 0);
+
+      if (plannedCosts.length > 0) {
+        await Promise.all(
+          plannedCosts.map((item) =>
+            createInputCost.mutateAsync({
+              id: profile.id,
+              data: {
+                category: item.category as any,
+                item: item.item,
+                costPerAcre: item.value,
+                totalCost: null,
+                acresApplied: parsedAcreage,
+                notes: "Added during farm setup for Benchmark Planner.",
+              },
+            })
+          )
+        );
+        await queryClient.invalidateQueries({
+          queryKey: getGetInputCostsQueryKey(profile.id),
+        });
+      }
 
       await queryClient.invalidateQueries({
         queryKey: getGetFarmProfilesQueryKey(),
@@ -501,6 +564,73 @@ export default function NewFarmScreen() {
           />
         </View>
 
+        <View style={{ gap: 8 }}>
+          <FieldLabel text="Benchmark Planner setup (optional)" />
+          <Text style={[s.helperText, { color: colors.mutedForeground }]}>
+            Add planning values now so the farm opens with useful margin and
+            peer benchmark comparisons.
+          </Text>
+          <View style={s.twoCol}>
+            <View style={s.col}>
+              <Text style={[s.miniLabel, { color: colors.mutedForeground }]}>
+                Expected yield
+              </Text>
+              <StyledInput
+                value={yieldGoal}
+                onChangeText={setYieldGoal}
+                placeholder="e.g. 185"
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={s.col}>
+              <Text style={[s.miniLabel, { color: colors.mutedForeground }]}>
+                Crop price
+              </Text>
+              <StyledInput
+                value={cropPrice}
+                onChangeText={setCropPrice}
+                placeholder="e.g. 4.55"
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+          <View style={s.twoCol}>
+            <View style={s.col}>
+              <Text style={[s.miniLabel, { color: colors.mutedForeground }]}>
+                Seed $/acre
+              </Text>
+              <StyledInput
+                value={seedCost}
+                onChangeText={setSeedCost}
+                placeholder="e.g. 118"
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={s.col}>
+              <Text style={[s.miniLabel, { color: colors.mutedForeground }]}>
+                Fertilizer $/acre
+              </Text>
+              <StyledInput
+                value={fertilizerCost}
+                onChangeText={setFertilizerCost}
+                placeholder="e.g. 172"
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+          <View style={{ gap: 6 }}>
+            <Text style={[s.miniLabel, { color: colors.mutedForeground }]}>
+              Chemicals $/acre
+            </Text>
+            <StyledInput
+              value={chemicalCost}
+              onChangeText={setChemicalCost}
+              placeholder="e.g. 68"
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+
         {/* Soil type */}
         <View style={{ gap: 8 }}>
           <FieldLabel text="Soil type (optional)" />
@@ -747,6 +877,23 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   soilText: { fontSize: 13 },
+  helperText: {
+    fontSize: 13,
+    fontFamily: "Outfit_400Regular",
+    lineHeight: 19,
+  },
+  twoCol: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  col: {
+    flex: 1,
+    gap: 6,
+  },
+  miniLabel: {
+    fontSize: 12,
+    fontFamily: "Outfit_600SemiBold",
+  },
 
   footer: {
     padding: 16,

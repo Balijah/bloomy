@@ -2,14 +2,18 @@ import {
   useGetAlerts,
   useMarkAlertRead,
   useDeleteAlert,
+  getGetAlertsQueryKey,
+  getGetActiveAlertsQueryKey,
 } from "@workspace/api-client-react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -50,15 +54,95 @@ const SEVERITY_COLORS: Record<string, string> = {
   minor: "#5B9BDE",
 };
 
+type AlertMutationContext = {
+  previousAlerts?: unknown;
+  previousActiveAlerts?: unknown;
+};
+
 export default function AlertsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const { enabled: notificationsEnabled } = useNotifications();
+  const queryClient = useQueryClient();
 
   const { data: alerts, isLoading, refetch, isRefetching } = useGetAlerts({});
-  const markRead = useMarkAlertRead();
-  const deleteAlert = useDeleteAlert();
+  const alertsQueryKey = getGetAlertsQueryKey({});
+  const activeAlertsQueryKey = getGetActiveAlertsQueryKey();
+
+  function invalidateAlertQueries() {
+    queryClient.invalidateQueries({ queryKey: alertsQueryKey });
+    queryClient.invalidateQueries({ queryKey: activeAlertsQueryKey });
+  }
+
+  const markRead = useMarkAlertRead<unknown, AlertMutationContext>({
+    mutation: {
+      onMutate: async ({ id }) => {
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: alertsQueryKey }),
+          queryClient.cancelQueries({ queryKey: activeAlertsQueryKey }),
+        ]);
+
+        const previousAlerts = queryClient.getQueryData(alertsQueryKey);
+        const previousActiveAlerts = queryClient.getQueryData(activeAlertsQueryKey);
+
+        queryClient.setQueryData(alertsQueryKey, (old: any) =>
+          Array.isArray(old)
+            ? old.map((alert) =>
+                alert.id === id ? { ...alert, isRead: true } : alert
+              )
+            : old
+        );
+        queryClient.setQueryData(activeAlertsQueryKey, (old: any) =>
+          Array.isArray(old) ? old.filter((alert) => alert.id !== id) : old
+        );
+
+        return { previousAlerts, previousActiveAlerts };
+      },
+      onError: (_error, _variables, context) => {
+        if (context?.previousAlerts !== undefined) {
+          queryClient.setQueryData(alertsQueryKey, context.previousAlerts);
+        }
+        if (context?.previousActiveAlerts !== undefined) {
+          queryClient.setQueryData(activeAlertsQueryKey, context.previousActiveAlerts);
+        }
+        Alert.alert("Could not update alert", "Please try again.");
+      },
+      onSettled: invalidateAlertQueries,
+    },
+  });
+  const deleteAlert = useDeleteAlert<unknown, AlertMutationContext>({
+    mutation: {
+      onMutate: async ({ id }) => {
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: alertsQueryKey }),
+          queryClient.cancelQueries({ queryKey: activeAlertsQueryKey }),
+        ]);
+
+        const previousAlerts = queryClient.getQueryData(alertsQueryKey);
+        const previousActiveAlerts = queryClient.getQueryData(activeAlertsQueryKey);
+
+        queryClient.setQueryData(alertsQueryKey, (old: any) =>
+          Array.isArray(old) ? old.filter((alert) => alert.id !== id) : old
+        );
+        queryClient.setQueryData(activeAlertsQueryKey, (old: any) =>
+          Array.isArray(old) ? old.filter((alert) => alert.id !== id) : old
+        );
+
+        return { previousAlerts, previousActiveAlerts };
+      },
+      onError: (_error, _variables, context) => {
+        if (context?.previousAlerts !== undefined) {
+          queryClient.setQueryData(alertsQueryKey, context.previousAlerts);
+        }
+        if (context?.previousActiveAlerts !== undefined) {
+          queryClient.setQueryData(activeAlertsQueryKey, context.previousActiveAlerts);
+        }
+        Alert.alert("Could not delete alert", "Please try again.");
+      },
+      onSettled: invalidateAlertQueries,
+    },
+  });
 
   // Persist alerts to AsyncStorage so the background task can use them
   useEffect(() => {

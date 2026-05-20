@@ -7,7 +7,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as ExpoLocation from "expo-location";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import MapView, { type Region } from "react-native-maps";
 import {
   ActivityIndicator,
@@ -19,11 +19,11 @@ import {
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
-const US_CENTER: Region = {
-  latitude: 39.5,
-  longitude: -98.35,
-  latitudeDelta: 20,
-  longitudeDelta: 20,
+const MISSOURI_DEMO_CENTER: Region = {
+  latitude: 38.5767,
+  longitude: -92.1735,
+  latitudeDelta: 6,
+  longitudeDelta: 6,
 };
 
 interface Props {
@@ -44,11 +44,19 @@ export default function LocationPicker({ initialCoords, onCoordsChange }: Props)
         latitudeDelta: 0.15,
         longitudeDelta: 0.15,
       }
-    : US_CENTER;
+    : MISSOURI_DEMO_CENTER;
 
   const [coords, setCoords] = useState<{ lat: number; lng: number }>(
-    initialCoords ?? { lat: US_CENTER.latitude, lng: US_CENTER.longitude }
+    initialCoords ?? {
+      lat: MISSOURI_DEMO_CENTER.latitude,
+      lng: MISSOURI_DEMO_CENTER.longitude,
+    }
   );
+
+  useEffect(() => {
+    if (!isExpoGo) return;
+    onCoordsChange(coords);
+  }, [coords, isExpoGo, onCoordsChange]);
 
   function handleRegionChangeComplete(region: Region) {
     const next = { lat: region.latitude, lng: region.longitude };
@@ -98,7 +106,8 @@ export default function LocationPicker({ initialCoords, onCoordsChange }: Props)
             </Text>
           </View>
           <Text style={[s.fallbackText, { color: colors.mutedForeground }]}>
-            Open a development build to choose coordinates on the map.
+            Using Missouri demo coordinates in Expo Go. Open a development build
+            to choose coordinates on the map.
           </Text>
         </View>
 
