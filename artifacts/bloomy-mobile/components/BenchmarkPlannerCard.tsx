@@ -384,6 +384,7 @@ export default function BenchmarkPlannerCard({
         <Ionicons name="shield-checkmark-outline" size={14} color={colors.secondary} />
         <Text style={[styles.disclaimerText, { color: colors.foreground }]}>
           {BENCHMARK_DEMO_DISCLAIMER}
+          {" "}Source: {safeBenchmark.sampleLabel}.
         </Text>
       </View>
 

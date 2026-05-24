@@ -993,7 +993,7 @@ export default function AgricultureDetailScreen() {
 
         return (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Risk Alerts</Text>
+            <Text style={s.sectionTitle}>Risk Status</Text>
             {active.length === 0 ? (
               <View
                 style={{

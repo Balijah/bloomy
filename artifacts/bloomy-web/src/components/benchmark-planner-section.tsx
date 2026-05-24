@@ -135,7 +135,7 @@ export default function BenchmarkPlannerSection({ profile, inputCosts }: Benchma
         <CardContent className="pt-4">
           <div className="flex items-start gap-3 p-3 rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>Anonymized regional benchmark sample data for demo use. Based on USDA ERS Iowa production cost data. For planning purposes only.</span>
+            <span>Anonymized regional benchmark data — {benchmark.sampleLabel} · {benchmark.seasonLabel}. For planning purposes only.</span>
           </div>
         </CardContent>
       </Card>
