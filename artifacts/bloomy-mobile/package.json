@@ -8,6 +8,7 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "build:judge:android": "eas build --platform android --profile judge-android",
     "build:judge:ios": "eas build --platform ios --profile judge-testflight",
     "submit:judge:ios": "eas submit --platform ios --profile judge-testflight"
@@ -58,6 +59,7 @@
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.5.1",
     "typescript": "~5.9.2",
+    "vitest": "^3.0.0",
     "zod": "catalog:",
     "zod-validation-error": "^3.4.0"
   },

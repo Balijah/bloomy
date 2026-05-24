@@ -15,6 +15,7 @@
     "start:deploy": "pnpm run start:api",
     "typecheck:deploy": "pnpm run typecheck:libs && pnpm --filter @workspace/api-server --filter @workspace/bloomy-web --filter @workspace/scripts --if-present run typecheck",
     "typecheck:libs": "tsc --build",
+    "test": "pnpm -r --if-present run test",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
