@@ -1,0 +1,48 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: render.com → New → Blueprint → connect this repo
+
+services:
+  - type: web
+    name: bloomy
+    runtime: node
+    plan: free
+    buildCommand: pnpm run build:deploy
+    startCommand: pnpm run start:deploy
+    envVars:
+      # Set automatically
+      - key: NODE_ENV
+        value: production
+
+      # Wired from the Render Postgres database below
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bloomy-db
+          property: connectionString
+
+      # Set these manually in the Render dashboard before first deploy:
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      # VITE_* vars are baked into the web build at compile time —
+      # must be set in the dashboard BEFORE the first build runs
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_CLERK_PROXY_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_GROWER
+        sync: false
+      - key: STRIPE_PRICE_GROWER_PRO
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+
+databases:
+  - name: bloomy-db
+    databaseName: bloomy
+    user: bloomy
+    plan: free
