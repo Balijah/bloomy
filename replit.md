@@ -11,7 +11,6 @@ artifacts/
   bloomy-web/     — React+Vite web app (port 20612, path /)
   bloomy-mobile/  — Expo (React Native) mobile app (port 21239, path /bloomy-mobile/)
   api-server/     — Express 5 API server (port 8080, path /api)
-  mockup-sandbox/ — Design preview server (port 8081, path /__mockup)
 lib/
   api-spec/       — OpenAPI spec (openapi.yaml) + Orval codegen config
   api-client-react/ — Generated React Query hooks (used by both web + mobile)

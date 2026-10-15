@@ -20,9 +20,6 @@
         "UIBackgroundModes": [
           "fetch",
           "remote-notification",
-          "location",
-          "fetch",
-          "remote-notification",
           "location"
         ],
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Bloomy uses your background location to notify you of active weather alerts when you arrive at your farm locations.",
@@ -38,9 +35,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.WAKE_LOCK"
       ]
     },
     "web": {
@@ -50,7 +45,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://bloomy.app/"
         }
       ],
       "@clerk/expo",

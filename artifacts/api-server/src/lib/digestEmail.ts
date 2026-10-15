@@ -165,7 +165,7 @@ function buildHtml(data: DigestEmailData): string {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <a href="#"
+                    <a href="${process.env["APP_URL"] ?? "/"}"
                        style="display:inline-block;background-color:${COLOR_PRIMARY};color:#FFFFFF;font-size:16px;font-weight:600;padding:14px 36px;border-radius:999px;text-decoration:none;letter-spacing:0.2px;">
                       Open Bloomy
                     </a>

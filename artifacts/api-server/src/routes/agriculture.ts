@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, inArray, desc } from "drizzle-orm";
 import { db, farmProfilesTable, locationsTable, alertsTable, subscriptionsTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 import {
   GetFarmProfilesResponse,
   GetFarmProfileParams,
@@ -314,8 +315,8 @@ router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res)
           expiresAt: new Date(Date.now() + THROTTLE_MS * 2),
         });
       }
-    } catch {
-      // Non-critical — never fail the request due to alert creation
+    } catch (err) {
+      logger.error({ err, farmProfileId: profile.id }, "Failed to create farm risk alert");
     }
   })();
 

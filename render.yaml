@@ -32,6 +32,8 @@ services:
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
       - key: STRIPE_PRICE_GROWER
         sync: false
       - key: STRIPE_PRICE_GROWER_PRO
@@ -39,6 +41,10 @@ services:
       - key: SENDGRID_API_KEY
         sync: false
       - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGIN
         sync: false
 
 databases:
