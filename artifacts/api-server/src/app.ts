@@ -5,6 +5,8 @@ import express, {
   type Response,
 } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -41,9 +43,26 @@ app.use(
   }),
 );
 
+app.use(helmet());
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+  skip: (req) => req.path === "/healthz",
+});
+app.use("/api", apiLimiter);
+
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim())
+  : process.env.NODE_ENV === "production"
+    ? false
+    : true;
+app.use(cors({ credentials: true, origin: corsOrigin }));
 app.use(
   express.json({
     limit: "1mb",
