@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -8,17 +8,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Home from "@/pages/home";
-import Dashboard from "@/pages/dashboard";
-import Agriculture from "@/pages/agriculture";
-import AgricultureDetails from "@/pages/agriculture-details";
-import Locations from "@/pages/locations";
-import Alerts from "@/pages/alerts";
-import Settings from "@/pages/settings";
-import Subscription from "@/pages/subscription";
-import NotFound from "@/pages/not-found";
-import Privacy from "@/pages/privacy";
-import Terms from "@/pages/terms";
 import Layout from "@/components/layout";
+
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Agriculture = lazy(() => import("@/pages/agriculture"));
+const AgricultureDetails = lazy(() => import("@/pages/agriculture-details"));
+const Locations = lazy(() => import("@/pages/locations"));
+const Alerts = lazy(() => import("@/pages/alerts"));
+const Settings = lazy(() => import("@/pages/settings"));
+const Subscription = lazy(() => import("@/pages/subscription"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Privacy = lazy(() => import("@/pages/privacy"));
+const Terms = lazy(() => import("@/pages/terms"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -189,6 +190,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <Suspense fallback={<div className="flex min-h-[100dvh] items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading…</div></div>}>
         <Switch>
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -206,6 +208,7 @@ function ClerkProviderWithRoutes() {
           
           <Route component={NotFound} />
         </Switch>
+        </Suspense>
       </QueryClientProvider>
     </ClerkProvider>
   );

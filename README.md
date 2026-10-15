@@ -4,8 +4,6 @@
 
 Plan input costs, forecast yields, model crop insurance, and track growing conditions — all from the field.
 
-**Live deployment:** https://earth-forecast--burhankhan5.replit.app
-
 ---
 
 ## The Problem
@@ -32,10 +30,10 @@ Farmers evaluate expensive seed, fertilizer, and chemical purchase agreements wi
 
 ## Platforms
 
-| Platform | URL |
-|----------|-----|
-| Web | https://earth-forecast--burhankhan5.replit.app |
-| Mobile | Expo/React Native (iOS + Android via EAS Build) |
+| Platform | Stack |
+|----------|-------|
+| Web | React + Vite + Tailwind v4 + shadcn/ui |
+| Mobile | Expo SDK 54 / React Native (iOS + Android via EAS Build) |
 
 ---
 
@@ -53,9 +51,48 @@ Farmers evaluate expensive seed, fertilizer, and chemical purchase agreements wi
 
 ### Prerequisites
 
-- [Node.js 24+](https://nodejs.org/)
+- [Node.js 22+](https://nodejs.org/) (LTS recommended)
 - [pnpm 10+](https://pnpm.io/)
-- PostgreSQL database
+- PostgreSQL 16+ database
+
+### Environment Variables
+
+Copy the example file and fill in your values:
+
+```sh
+cp .env.example .env
+```
+
+**Required for the API server:**
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `PORT` | Port for the Express API server (e.g. `8080`) |
+| `CLERK_SECRET_KEY` | Server-side Clerk secret key ([dashboard.clerk.com](https://dashboard.clerk.com)) |
+| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+
+**Required for the web frontend (baked into the Vite build):**
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_CLERK_PUBLISHABLE_KEY` | Same as `CLERK_PUBLISHABLE_KEY` |
+| `VITE_CLERK_PROXY_URL` | Clerk proxy URL, e.g. `https://your-domain.com/api/__clerk` |
+
+**Optional (features degrade gracefully without them):**
+
+| Variable | Description |
+|----------|-------------|
+| `STRIPE_SECRET_KEY` | Stripe secret key for subscription checkout |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_PRICE_GROWER` | Stripe Price ID for the Grower plan |
+| `STRIPE_PRICE_GROWER_PRO` | Stripe Price ID for the Grower Pro plan |
+| `SENDGRID_API_KEY` | SendGrid API key for weekly digest emails |
+| `SENDGRID_FROM_EMAIL` | Verified sender email for digest emails |
+| `APP_URL` | Base URL of the web app (used in email links, Stripe return URLs) |
+| `CORS_ORIGIN` | Comma-separated allowed origins (defaults to same-origin in production) |
+
+See `.env.example` for the full list including mobile-specific variables.
 
 ### Setup
 
@@ -65,10 +102,14 @@ pnpm install --frozen-lockfile
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your values
+# Edit .env with your values (see table above)
 
-# 3. Push database schema
+# 3. Set up the database
+# For development (direct schema push, no migration files):
 pnpm --filter @workspace/db push
+
+# For production (applies committed migration files):
+pnpm --filter @workspace/db migrate
 
 # 4. Start the API server
 pnpm --filter @workspace/api-server dev
@@ -80,26 +121,36 @@ pnpm --filter @workspace/bloomy-web dev
 pnpm --filter @workspace/bloomy-mobile dev
 ```
 
-### Verify the deployment
+### Deploy to Render
+
+A `render.yaml` Blueprint is included. Connect this repo to [Render](https://render.com), create a new Blueprint, and set the env vars marked `sync: false` in the Render dashboard before the first deploy.
 
 ```sh
-curl -sS https://earth-forecast--burhankhan5.replit.app/api/healthz
-# Expected: {"status":"ok"}
+# Production build (used by render.yaml buildCommand)
+pnpm run build:deploy
+
+# Production start (used by render.yaml startCommand)
+pnpm run start:deploy
 ```
+
+The production API server serves the built web frontend from `artifacts/bloomy-web/dist/public/` when `NODE_ENV=production`.
 
 ---
 
 ## Running Tests
 
 ```sh
-# All tests
+# All tests (119 across 3 packages)
 pnpm test
 
-# Benchmark Planner financial math (web)
+# Benchmark Planner financial math (web — 54 tests)
 pnpm --filter @workspace/bloomy-web test
 
-# Yield forecast + crop insurance math (mobile lib)
+# Yield forecast + crop insurance math (mobile lib — 43 tests)
 pnpm --filter @workspace/bloomy-mobile test
+
+# API server (auth, billing, tier enforcement, webhooks — 22 tests)
+pnpm --filter @workspace/api-server test
 ```
 
 ---
@@ -120,13 +171,35 @@ lib/
 
 **Data flow:** Drizzle schema → OpenAPI spec → Orval codegen → typed React Query hooks → web/mobile clients. Type-safe API contracts between frontend and backend eliminate entire categories of runtime errors.
 
-For full architecture detail see [replit.md](./replit.md). For the demo narration and verification commands see [SUBMISSION.md](./SUBMISSION.md).
+### Security
+
+- **Authentication**: Clerk (server middleware + web/mobile SDKs)
+- **Rate limiting**: `express-rate-limit` on all `/api` routes (300 req/15 min, healthcheck exempt)
+- **Security headers**: Helmet (HSTS, X-Content-Type-Options, X-Frame-Options, etc.)
+- **CORS**: Allowlist-based via `CORS_ORIGIN` env var (rejects all cross-origin in production if not set)
+- **Body size limits**: 1 MB max JSON/URL-encoded payloads
+- **Row-level authorization**: All queries scoped to authenticated user's ID
+- **Stripe webhooks**: Signature verification via `stripe.webhooks.constructEvent()`
+- **Supply chain security**: `pnpm minimumReleaseAge: 1440` (packages must be published ≥1 day before install)
+
+### Database Migrations
+
+For production, use the migration workflow (not `push`):
+
+```sh
+# 1. Edit schema files in lib/db/src/schema/
+# 2. Generate migration SQL
+pnpm --filter @workspace/db generate
+# 3. Review and commit the migration
+# 4. Apply on deploy
+pnpm --filter @workspace/db migrate
+```
 
 ---
 
 ## Domain Computation Modules
 
-The core of Bloomy's value is 14 pure-TypeScript computation modules in `artifacts/bloomy-mobile/lib/` — original domain engineering that requires real agricultural expertise to replicate:
+14 pure-TypeScript computation modules in `artifacts/bloomy-mobile/lib/`:
 
 | Module | What it computes |
 |--------|-----------------|
@@ -141,9 +214,10 @@ The core of Bloomy's value is 14 pure-TypeScript computation modules in `artifac
 | `irrigation.ts` | Soil moisture deficit and irrigation scheduling |
 | `soilHealth.ts` | Composite soil health scoring from multiple factors |
 
-Core financial and insurance calculations are covered by unit tests in:
-- `artifacts/bloomy-web/src/lib/__tests__/`
-- `artifacts/bloomy-mobile/lib/__tests__/`
+Unit tests cover core financial and insurance calculations:
+- `artifacts/bloomy-web/src/lib/__tests__/` (54 tests)
+- `artifacts/bloomy-mobile/lib/__tests__/` (43 tests)
+- `artifacts/api-server/src/__tests__/` (22 tests)
 
 ---
 
@@ -156,23 +230,26 @@ Core financial and insurance calculations are covered by unit tests in:
 - **Database**: PostgreSQL, Drizzle ORM, drizzle-zod
 - **Payments**: Stripe (Grower $19/mo, Grower Pro $39/mo)
 - **Email**: SendGrid (weekly digest)
-- **Weather**: Open-Meteo API (free tier, no key required)
-- **Supply chain security**: `pnpm minimumReleaseAge: 1440` enforced workspace-wide
+- **Weather**: [Open-Meteo API](https://open-meteo.com/) (free tier, no key required)
+- **CI**: GitHub Actions (typecheck, test, build, security audit)
 
 ---
 
 ## Commands Reference
 
 ```sh
-# Typecheck all packages
-pnpm run typecheck
+pnpm run typecheck              # Typecheck all packages
+pnpm test                       # Run all tests
+pnpm run build:deploy           # Production build (API + web)
 
-# Regenerate API hooks/schemas from openapi.yaml
-pnpm --filter @workspace/api-spec run codegen
-
-# Push DB schema
-pnpm --filter @workspace/db push
-
-# Run all tests
-pnpm test
+pnpm --filter @workspace/api-spec run codegen    # Regenerate API hooks/schemas from openapi.yaml
+pnpm --filter @workspace/db push                 # Push DB schema (dev only)
+pnpm --filter @workspace/db generate             # Generate migration SQL
+pnpm --filter @workspace/db migrate              # Apply migrations (production)
 ```
+
+---
+
+## License
+
+MIT
