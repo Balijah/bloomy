@@ -41,9 +41,21 @@ pnpm --filter @workspace/bloomy-mobile typecheck  # tsc type check (skip during 
 
 ### Database (`lib/db`)
 ```bash
-pnpm --filter @workspace/db push               # drizzle-kit push schema to DB
-pnpm --filter @workspace/db push-force         # force push (drops conflicting columns)
+pnpm --filter @workspace/db generate           # generate SQL migration from schema changes
+pnpm --filter @workspace/db migrate            # apply pending migrations to DB (production)
+pnpm --filter @workspace/db push               # push schema directly to DB (dev only)
+pnpm --filter @workspace/db studio             # open Drizzle Studio for DB inspection
 ```
+
+#### Migration Workflow (Production)
+1. Edit schema files in `lib/db/src/schema/`
+2. Run `pnpm --filter @workspace/db generate` to create a migration in `lib/db/migrations/`
+3. Review the generated SQL — **commit it to git**
+4. Deploy and run `pnpm --filter @workspace/db migrate` to apply
+5. **Rollback**: write a reverse migration SQL and apply it manually, or restore from backup
+
+#### Dev Workflow
+Use `pnpm --filter @workspace/db push` for rapid iteration (directly syncs schema to DB without migration files).
 
 ### API Codegen (`lib/api-spec`)
 ```bash
