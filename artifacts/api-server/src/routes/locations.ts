@@ -54,7 +54,6 @@ router.post("/locations", requireAuth, async (req, res): Promise<void> => {
     await db.update(locationsTable).set({ isDefault: false }).where(eq(locationsTable.userId, userId));
   }
 
-  const existing = await db.select().from(locationsTable).where(eq(locationsTable.userId, userId));
   const isDefault = existing.length === 0 ? true : (parsed.data.isDefault ?? false);
 
   const [loc] = await db.insert(locationsTable).values({
