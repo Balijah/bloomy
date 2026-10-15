@@ -16,9 +16,22 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } fr
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Bell, Mail, Settings2, ShieldAlert } from "lucide-react";
+import { Bell, Mail, Settings2, ShieldAlert, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@clerk/react";
+import { useUser, useClerk } from "@clerk/react";
+import { useDeleteMe } from "@workspace/api-client-react";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const preferencesSchema = z.object({
   emailEnabled: z.boolean(),
@@ -31,10 +44,13 @@ const preferencesSchema = z.object({
 export default function Settings() {
   const { data: dbUser, isLoading: isDbUserLoading } = useGetMe();
   const { user: clerkUser } = useUser();
+  const { signOut } = useClerk();
   const { data: prefs, isLoading: isPrefsLoading } = useGetAlertPreferences();
   const updatePrefs = useUpdateAlertPreferences();
+  const deleteAccount = useDeleteMe();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof preferencesSchema>>({
     resolver: zodResolver(preferencesSchema),
@@ -233,6 +249,62 @@ export default function Settings() {
             </CardFooter>
           </form>
         </Form>
+      </Card>
+
+      {/* Legal Links */}
+      <div className="flex gap-4 text-sm text-muted-foreground">
+        <a href="/privacy" className="hover:text-foreground underline underline-offset-4">Privacy Policy</a>
+        <a href="/terms" className="hover:text-foreground underline underline-offset-4">Terms of Service</a>
+      </div>
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/30 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-xl flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" /> Delete Account
+          </CardTitle>
+          <CardDescription>
+            Permanently delete your account and all associated data. This action
+            cannot be undone. Any active subscription will be cancelled.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Delete My Account</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your account, all locations, farm
+                  profiles, notes, and records. If you have a paid subscription,
+                  it will be cancelled immediately. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    deleteAccount.mutate(undefined, {
+                      onSuccess: () => {
+                        toast({ title: "Account deleted" });
+                        signOut();
+                      },
+                      onError: () => {
+                        toast({ title: "Failed to delete account", variant: "destructive" });
+                      },
+                    });
+                  }}
+                  disabled={deleteAccount.isPending}
+                >
+                  {deleteAccount.isPending ? "Deleting..." : "Yes, delete everything"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
       </Card>
     </div>
   );

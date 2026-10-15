@@ -160,6 +160,10 @@ export default function Home() {
           <span>Bloomy</span>
         </div>
         <p className="text-sm">© {new Date().getFullYear()} Bloomy Weather Platform. All rights reserved.</p>
+        <div className="flex justify-center gap-4 mt-3 text-xs">
+          <a href="/privacy" className="hover:text-foreground underline underline-offset-4">Privacy Policy</a>
+          <a href="/terms" className="hover:text-foreground underline underline-offset-4">Terms of Service</a>
+        </div>
       </footer>
     </div>
   );
