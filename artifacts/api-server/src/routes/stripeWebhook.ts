@@ -66,8 +66,8 @@ router.post("/stripe/webhook", async (req, res): Promise<void> => {
         const subscriptionId = session.subscription as string;
 
         if (subscriptionId && customerId) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const priceId = subscription.items.data[0]?.price?.id ?? null;
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+          const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
           const tier = tierFromPriceId(priceId);
 
           const [sub] = await db
@@ -83,7 +83,9 @@ router.post("/stripe/webhook", async (req, res): Promise<void> => {
                 tier,
                 status: "active",
                 stripeSubscriptionId: subscriptionId,
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                currentPeriodEnd: subscription.current_period_end
+                  ? new Date(subscription.current_period_end * 1000)
+                  : null,
               })
               .where(eq(subscriptionsTable.id, sub.id));
           } else {
