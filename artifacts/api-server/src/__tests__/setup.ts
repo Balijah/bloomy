@@ -44,6 +44,8 @@ vi.mock("@workspace/db", () => {
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnValue([]),
     insert: vi.fn().mockReturnThis(),
+    onConflictDoNothing: vi.fn().mockReturnThis(),
+    onConflictDoUpdate: vi.fn().mockReturnThis(),
     values: vi.fn().mockReturnThis(),
     returning: vi.fn().mockReturnValue([]),
     update: vi.fn().mockReturnThis(),
@@ -51,8 +53,9 @@ vi.mock("@workspace/db", () => {
     delete: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
   };
+  const transaction = vi.fn(async (fn: any) => fn(mockDb));
   return {
-    db: mockDb,
+    db: { ...mockDb, transaction },
     pool: {},
     usersTable: { id: "id", clerkUserId: "clerk_user_id", email: "email" },
     locationsTable: { id: "id", userId: "user_id", isDefault: "is_default" },

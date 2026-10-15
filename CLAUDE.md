@@ -54,6 +54,20 @@ pnpm --filter @workspace/db studio             # open Drizzle Studio for DB insp
 4. Deploy and run `pnpm --filter @workspace/db migrate` to apply
 5. **Rollback**: write a reverse migration SQL and apply it manually, or restore from backup
 
+#### First deployment to an existing database
+Do not run the initial migration against an existing `drizzle-kit push` database.
+Back up the database, then compare its tables, columns, defaults, and constraints
+with `lib/db/migrations/0000_baseline.sql`. Resolve any differences first.
+Only once they match, run:
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/baseline.sql
+pnpm --filter @workspace/db migrate
+```
+The baseline records the old schema without changing application data. The next
+migration creates `stripe_events`. Fresh databases need only `migrate`. Never
+baseline a fresh database or a database with existing migration history.
+CI tests both paths and repeats migrations to check that they are safe to rerun.
+
 #### Dev Workflow
 Use `pnpm --filter @workspace/db push` for rapid iteration (directly syncs schema to DB without migration files).
 
@@ -95,3 +109,11 @@ pnpm --filter @workspace/api-spec codegen      # regenerate api-client-react + a
 
 ### Supply Chain Security
 `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (packages must be 1 day old before install). Do not disable this. Add exceptions only to `minimumReleaseAgeExclude`.
+
+### Dependency audit baseline
+`node scripts/check-audit.mjs` reports all audit severity totals and fails on new
+high/critical advisory + installed-version pairs, registry errors, or invalid
+reports. `scripts/security-audit-baseline.json` records existing unresolved debt
+as of 2026-10-15; it is not a clean security audit. Do not automatically refresh
+it to make CI green. Update dependencies to remove findings; assess any new
+finding before merging. Some existing advisories have no patched release.

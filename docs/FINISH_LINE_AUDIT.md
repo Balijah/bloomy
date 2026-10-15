@@ -63,9 +63,9 @@
 **Effort:** Trivial — add `requireAuth` middleware to the `/weather/current` and `/weather/forecast` route handlers (or at minimum add rate limiting per §4).
 **Owner decision needed:** Are these intentionally public for unauthenticated landing-page widgets? If so, at minimum rate-limit them aggressively.
 
-#### 7. `express.json()` Has No Body Size Limit
+#### 7. JSON Body Size Already Has a Default Limit (Not a Launch Blocker)
 **What:** `app.use(express.json())` is called without a `limit` option. Express 5 defaults to 100 KB, which is usually acceptable, but the absence of an explicit limit signals that it wasn't considered.
-**Why:** A large JSON payload could consume server memory. This is defence-in-depth alongside rate limiting.
+**Why:** The existing 100 KB default already bounds JSON payload size. Setting it explicitly is optional documentation of that policy, not a missing security control.
 **Files:** `artifacts/api-server/src/app.ts`
 **Effort:** Trivial — `app.use(express.json({ limit: '100kb' }))`.
 
@@ -137,7 +137,7 @@ There is **no** server-side enforcement for: number of farm profiles, number of 
 
 #### 16. Web Bundle Is Over 700 KB (No Code Splitting)
 **What:** The web production build produces a single 721 KB JS chunk. Vite itself warns about this.
-**Why:** First-load performance will be poor, especially on mobile connections. Every page change downloads the entire app.
+**Why:** First-load performance will be poor, especially on mobile connections. The initial load downloads the entire application bundle; client-side route changes reuse that loaded bundle.
 **Files:** `artifacts/bloomy-web/vite.config.ts`
 **Effort:** Small — add `React.lazy()` + `Suspense` for page-level routes and configure `manualChunks` in Vite's Rollup options to split vendor libraries (recharts, radix, etc.) into separate chunks.
 

@@ -72,13 +72,19 @@ router.delete("/users/me", requireAuth, async (req, res): Promise<void> => {
   }
 
   const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, existing.id)).limit(1);
-  if (sub?.stripeSubscriptionId && process.env.STRIPE_SECRET_KEY) {
+  if (sub?.stripeSubscriptionId) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      res.status(503).json({ error: "Cannot cancel subscription: payment processing not configured" });
+      return;
+    }
     try {
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
       await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
     } catch (err) {
       logger.error({ err }, "Account deletion: failed to cancel Stripe subscription");
+      res.status(502).json({ error: "Could not cancel your subscription. Your account has not been deleted; please retry." });
+      return;
     }
   }
 

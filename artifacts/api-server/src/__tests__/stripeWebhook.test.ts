@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createHmac } from "node:crypto";
 
 vi.mock("../lib/logger", () => ({
   logger: {
@@ -35,14 +34,5 @@ describe("Stripe webhook signature verification", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/invalid signature/i);
-  });
-});
-
-describe("Stripe webhook idempotency", () => {
-  it("generates unique tokens for different user IDs", () => {
-    const secret = "test-secret";
-    const token1 = createHmac("sha256", secret).update("1").digest("hex");
-    const token2 = createHmac("sha256", secret).update("2").digest("hex");
-    expect(token1).not.toBe(token2);
   });
 });
