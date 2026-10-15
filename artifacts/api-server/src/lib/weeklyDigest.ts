@@ -26,6 +26,7 @@ import {
 import { eq, and, gte, inArray, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { sendDigestEmail, type FarmDigestRow } from "./digestEmail";
+import { buildUnsubscribeUrl } from "../routes/emailUnsubscribe";
 
 const expo = new Expo();
 
@@ -269,6 +270,7 @@ async function sendWeeklyDigests(): Promise<void> {
           totalAlerts,
           totalNotes,
           digestDate,
+          unsubscribeUrl: buildUnsubscribeUrl(userId),
         });
         emailSent++;
       } catch {

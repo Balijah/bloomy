@@ -11,6 +11,7 @@ import pushTokensRouter from "./pushTokens";
 import alertsRouter from "./alerts";
 import subscriptionsRouter from "./subscriptions";
 import stripeWebhookRouter from "./stripeWebhook";
+import emailUnsubscribeRouter from "./emailUnsubscribe";
 import dashboardRouter from "./dashboard";
 
 const router: IRouter = Router();
@@ -27,6 +28,7 @@ router.use(pushTokensRouter);
 router.use(alertsRouter);
 router.use(subscriptionsRouter);
 router.use(stripeWebhookRouter);
+router.use(emailUnsubscribeRouter);
 router.use(dashboardRouter);
 
 export default router;
