@@ -23,6 +23,12 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// One reverse-proxy hop (Replit, Railway, Render). A boolean `true` would
+// trust every X-Forwarded-For entry, so the rate limiter would key off a
+// client-supplied address. Hop count 1 keys the 300 / 15 minute bucket on
+// the client the proxy actually saw, including Stripe's webhook.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
