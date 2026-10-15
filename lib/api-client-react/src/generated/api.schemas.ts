@@ -1050,6 +1050,14 @@ export const GetAlertsSeverity = {
   warning: "warning",
 } as const;
 
+export type EmailUnsubscribeParams = {
+  token: string;
+};
+
+export type StripeWebhook200 = {
+  received?: boolean;
+};
+
 export type GetDashboardSummaryParams = {
   /**
    * @nullable

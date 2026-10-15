@@ -74,6 +74,16 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
+    delete:
+      operationId: deleteMe
+      tags: [users]
+      summary: Delete current user account
+      description: Cancels any active Stripe subscription and permanently deletes all user data.
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          description: Unauthorized
 
   /locations:
     get:
@@ -906,6 +916,28 @@ paths:
         "401":
           description: Unauthorized
 
+  /email/unsubscribe:
+    get:
+      operationId: emailUnsubscribe
+      tags: [alerts]
+      summary: Unsubscribe from weekly digest emails
+      description: Token-based one-click unsubscribe. No auth required.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unsubscribed successfully
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid or expired token
+
   /subscriptions/current:
     get:
       operationId: getCurrentSubscription
@@ -956,6 +988,25 @@ paths:
                 $ref: "#/components/schemas/PortalSessionResponse"
         "401":
           description: Unauthorized
+
+  /stripe/webhook:
+    post:
+      operationId: stripeWebhook
+      tags: [subscriptions]
+      summary: Stripe webhook receiver
+      description: Receives and verifies Stripe webhook events. Not called by clients directly.
+      responses:
+        "200":
+          description: Event acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        "400":
+          description: Invalid signature or payload
 
   /dashboard/summary:
     get:
