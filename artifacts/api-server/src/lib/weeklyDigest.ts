@@ -8,8 +8,9 @@
  * Data comes entirely from existing DB rows — no live weather API calls are
  * made during the cron run, so it completes quickly even with many users.
  *
- * Per-user preferences (alert_preferences.weekly_digest_enabled and
- * digest_min_severity) are respected before any message is sent.
+ * Free-tier users are skipped. Paid users follow
+ * alert_preferences.weekly_digest_enabled and digest_min_severity.
+ * A missing preferences row counts as opted in.
  */
 
 import cron from "node-cron";
@@ -22,10 +23,12 @@ import {
   alertsTable,
   fieldNotesTable,
   alertPreferencesTable,
+  subscriptionsTable,
 } from "@workspace/db";
 import { eq, and, gte, inArray, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { sendDigestEmail, type FarmDigestRow } from "./digestEmail";
+import { receivesWeeklyDigest } from "./tierLimits";
 import { buildUnsubscribeUrl } from "../routes/emailUnsubscribe";
 
 const expo = new Expo();
@@ -66,9 +69,11 @@ async function sendWeeklyDigests(): Promise<void> {
       email: usersTable.email,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
+      tier: subscriptionsTable.tier,
     })
     .from(usersTable)
-    .innerJoin(farmProfilesTable, eq(farmProfilesTable.userId, usersTable.id));
+    .innerJoin(farmProfilesTable, eq(farmProfilesTable.userId, usersTable.id))
+    .leftJoin(subscriptionsTable, eq(subscriptionsTable.userId, usersTable.id));
 
   if (usersWithFarms.length === 0) {
     logger.info("Weekly digest: no users with farms — skipping");
@@ -82,12 +87,14 @@ async function sendWeeklyDigests(): Promise<void> {
     number,
     { email: string; firstName: string | null; lastName: string | null }
   >();
+  const tierByUser = new Map<number, string | null>();
   for (const u of usersWithFarms) {
     userInfoMap.set(u.userId, {
       email: u.email,
       firstName: u.firstName,
       lastName: u.lastName,
     });
+    tierByUser.set(u.userId, u.tier);
   }
 
   // 2. Load preferences and filter to opted-in users
@@ -111,14 +118,14 @@ async function sendWeeklyDigests(): Promise<void> {
     });
   }
 
-  // Default: opted-in if no prefs row exists yet
-  const userIds = allUserIds.filter((uid) => {
-    const pref = prefsByUser.get(uid);
-    return pref === undefined ? true : pref.weeklyDigestEnabled;
-  });
+  // Free tier is excluded even when the preference is missing or on.
+  // Paid users stay opted in when they have no preferences row.
+  const userIds = allUserIds.filter((uid) =>
+    receivesWeeklyDigest(tierByUser.get(uid), prefsByUser.get(uid)?.weeklyDigestEnabled),
+  );
 
   if (userIds.length === 0) {
-    logger.info("Weekly digest: all users have opted out — skipping");
+    logger.info("Weekly digest: no eligible users — skipping");
     return;
   }
 

@@ -36,3 +36,35 @@ describe("Stripe webhook signature verification", () => {
     expect(res.body.error).toMatch(/invalid signature/i);
   });
 });
+
+describe("API rate limit behind one proxy hop", () => {
+  it("keeps a separate bucket per forwarded client, including the Stripe webhook", async () => {
+    const { default: app } = await import("../app");
+    const { default: request } = await import("supertest");
+
+    expect(app.get("trust proxy")).toBe(1);
+
+    const post = (ip: string) =>
+      request(app)
+        .post("/api/stripe/webhook")
+        .set("X-Forwarded-For", ip)
+        .set("Content-Type", "application/json")
+        .send({ type: "test" });
+
+    const firstA = await post("203.0.113.10");
+    const firstB = await post("203.0.113.11");
+    const secondA = await post("203.0.113.10");
+
+    expect(remaining(firstA)).toBe(299);
+    expect(remaining(firstB)).toBe(299);
+    expect(remaining(secondA)).toBe(298);
+  });
+});
+
+function remaining(res: { headers: Record<string, string | string[] | undefined> }): number {
+  const header = res.headers["ratelimit"];
+  const value = Array.isArray(header) ? header[0] : header;
+  const match = /remaining=(\d+)/.exec(value ?? "");
+  if (!match) throw new Error(`missing RateLimit header: ${String(value)}`);
+  return Number(match[1]);
+}

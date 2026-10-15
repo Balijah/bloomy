@@ -45,3 +45,16 @@ export const TIER_LIMITS: Record<string, TierLimits> = {
 export function getLimits(tier: string): TierLimits {
   return TIER_LIMITS[tier] ?? TIER_LIMITS.free;
 }
+
+/**
+ * Free and unknown tiers never receive the weekly digest.
+ * Paid users follow their preference. A missing preference counts as opted in,
+ * matching the alert_preferences.weekly_digest_enabled default.
+ */
+export function receivesWeeklyDigest(
+  tier: string | null | undefined,
+  weeklyDigestEnabled: boolean | undefined,
+): boolean {
+  if (!getLimits(tier ?? "free").weeklyDigest) return false;
+  return weeklyDigestEnabled !== false;
+}

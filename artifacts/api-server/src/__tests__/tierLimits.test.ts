@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLimits, TIER_LIMITS } from "../lib/tierLimits";
+import { getLimits, receivesWeeklyDigest, TIER_LIMITS } from "../lib/tierLimits";
 
 describe("tierLimits", () => {
   it("returns free tier limits by default", () => {
@@ -50,6 +50,25 @@ describe("tierLimits", () => {
       expect(limits.sprayWindowAlerts).toBe(true);
       expect(limits.peakRiskAlerts).toBe(true);
       expect(limits.weeklyDigest).toBe(true);
+    }
+  });
+});
+
+describe("receivesWeeklyDigest", () => {
+  it("skips free and unknown tiers even when the preference is on or missing", () => {
+    expect(receivesWeeklyDigest("free", true)).toBe(false);
+    expect(receivesWeeklyDigest("free", undefined)).toBe(false);
+    expect(receivesWeeklyDigest("free", false)).toBe(false);
+    expect(receivesWeeklyDigest(null, true)).toBe(false);
+    expect(receivesWeeklyDigest(undefined, undefined)).toBe(false);
+    expect(receivesWeeklyDigest("nonexistent", true)).toBe(false);
+  });
+
+  it("lets paid users follow their preference, and treats a missing preference as opted in", () => {
+    for (const tier of ["grower", "grower_pro"]) {
+      expect(receivesWeeklyDigest(tier, undefined)).toBe(true);
+      expect(receivesWeeklyDigest(tier, true)).toBe(true);
+      expect(receivesWeeklyDigest(tier, false)).toBe(false);
     }
   });
 });
