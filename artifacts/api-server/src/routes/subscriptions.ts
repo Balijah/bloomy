@@ -58,16 +58,29 @@ router.post("/subscriptions/checkout", requireAuth, async (req, res): Promise<vo
     return;
   }
 
-  const sessionParams: any = {
-    mode: "subscription",
+  let customerId = sub?.stripeCustomerId;
+  if (!customerId) {
+    const customer = await stripe.customers.create(
+      { metadata: { userId: String(userId) } },
+      { idempotencyKey: `bloomy-customer-${userId}` },
+    );
+    customerId = customer.id;
+    // Save the mapping before Checkout can emit a webhook.
+    await db.insert(subscriptionsTable)
+      .values({ userId, stripeCustomerId: customerId })
+      .onConflictDoUpdate({
+        target: subscriptionsTable.userId,
+        set: { stripeCustomerId: customerId },
+      });
+  }
+
+  const sessionParams = {
+    mode: "subscription" as const,
+    customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: parsed.data.successUrl,
     cancel_url: parsed.data.cancelUrl,
   };
-
-  if (sub?.stripeCustomerId) {
-    sessionParams.customer = sub.stripeCustomerId;
-  }
 
   const session = await stripe.checkout.sessions.create(sessionParams);
   res.json(CreateCheckoutSessionResponse.parse({ url: session.url }));

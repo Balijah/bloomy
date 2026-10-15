@@ -30,6 +30,7 @@ export interface DigestEmailData {
   totalAlerts: number;
   totalNotes: number;
   digestDate: string;
+  unsubscribeUrl?: string;
 }
 
 // ── HTML builder ──────────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ function buildFarmRow(farm: FarmDigestRow): string {
 }
 
 function buildHtml(data: DigestEmailData): string {
-  const { toName, farms, totalAlerts, totalNotes, digestDate } = data;
+  const { toName, farms, totalAlerts, totalNotes, digestDate, unsubscribeUrl } = data;
   const greeting = toName ? `Hi ${toName},` : "Hello,";
   const allClear = totalAlerts === 0 && totalNotes === 0;
 
@@ -179,7 +180,10 @@ function buildHtml(data: DigestEmailData): string {
             <td style="background-color:#F0EDE8;border-radius:0 0 12px 12px;border:1px solid ${COLOR_BORDER};border-top:none;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:${COLOR_MUTED};line-height:1.6;">
                 You're receiving this because you enabled the Weekly Digest in Bloomy.<br/>
-                To stop these emails, open <strong>Settings → Notifications → Weekly Farm Digest</strong> in the app.
+                ${unsubscribeUrl
+                  ? `<a href="${unsubscribeUrl}" style="color:${COLOR_MUTED};text-decoration:underline;">Unsubscribe</a> or open `
+                  : "Open "}
+                <strong>Settings → Notifications</strong> in the app to manage preferences.
               </p>
             </td>
           </tr>
@@ -224,8 +228,11 @@ function buildText(data: DigestEmailData): string {
     "",
     "---",
     "You're receiving this because Weekly Digest is enabled in Bloomy.",
-    "To unsubscribe, open Settings → Notifications → Weekly Farm Digest in the app."
   );
+  if (data.unsubscribeUrl) {
+    lines.push(`Unsubscribe: ${data.unsubscribeUrl}`);
+  }
+  lines.push("Or open Settings → Notifications in the app to manage preferences.");
   return lines.join("\n");
 }
 
@@ -243,13 +250,20 @@ export async function sendDigestEmail(data: DigestEmailData): Promise<void> {
       : `Bloomy Digest: ${data.totalAlerts + data.totalNotes} item${data.totalAlerts + data.totalNotes !== 1 ? "s" : ""} need${data.totalAlerts + data.totalNotes === 1 ? "s" : ""} your attention`;
 
   try {
-    await sgMail.send({
+    const msg: any = {
       to: { email: data.toEmail, name: data.toName ?? undefined },
       from: { email: FROM_EMAIL, name: "Bloomy" },
       subject,
       html: buildHtml(data),
       text: buildText(data),
-    });
+    };
+    if (data.unsubscribeUrl) {
+      msg.headers = {
+        "List-Unsubscribe": `<${data.unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      };
+    }
+    await sgMail.send(msg);
   } catch (err) {
     logger.error({ err, email: data.toEmail }, "Weekly digest email: SendGrid error");
     throw err;

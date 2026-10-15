@@ -1312,6 +1312,14 @@ export const UpdateAlertPreferencesResponse = zod.object({
 });
 
 /**
+ * Token-based one-click unsubscribe. No auth required.
+ * @summary Unsubscribe from weekly digest emails
+ */
+export const EmailUnsubscribeQueryParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+/**
  * @summary Get current user subscription
  */
 export const GetCurrentSubscriptionResponse = zod.object({
@@ -1343,6 +1351,14 @@ export const CreateCheckoutSessionResponse = zod.object({
  */
 export const CreatePortalSessionResponse = zod.object({
   url: zod.string(),
+});
+
+/**
+ * Receives and verifies Stripe webhook events. Not called by clients directly.
+ * @summary Stripe webhook receiver
+ */
+export const StripeWebhookResponse = zod.object({
+  received: zod.boolean().optional(),
 });
 
 /**

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable, subscriptionsTable, alertPreferencesTable } from "@workspace/db";
 import { GetMeResponse, UpdateMeBody, UpdateMeResponse } from "@workspace/api-zod";
 import { requireAuth, getOrCreateUser } from "../lib/auth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -59,6 +60,38 @@ router.patch("/users/me", requireAuth, async (req, res): Promise<void> => {
     ...updated,
     subscriptionTier: sub?.tier ?? "free",
   }));
+});
+
+router.delete("/users/me", requireAuth, async (req, res): Promise<void> => {
+  const clerkUserId = (req as any).clerkUserId;
+
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkUserId, clerkUserId)).limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, existing.id)).limit(1);
+  if (sub?.stripeSubscriptionId) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      res.status(503).json({ error: "Cannot cancel subscription: payment processing not configured" });
+      return;
+    }
+    try {
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+    } catch (err) {
+      logger.error({ err }, "Account deletion: failed to cancel Stripe subscription");
+      res.status(502).json({ error: "Could not cancel your subscription. Your account has not been deleted; please retry." });
+      return;
+    }
+  }
+
+  await db.delete(usersTable).where(eq(usersTable.id, existing.id));
+
+  logger.info({ userId: existing.id, clerkUserId }, "Account deleted");
+  res.sendStatus(204);
 });
 
 export default router;

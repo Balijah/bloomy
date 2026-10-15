@@ -30,6 +30,7 @@ import type {
   CurrentWeather,
   DailyForecast,
   DashboardSummary,
+  EmailUnsubscribeParams,
   FarmProfile,
   FieldNote,
   GetAlertsParams,
@@ -45,6 +46,7 @@ import type {
   PortalSessionResponse,
   RegisterPushTokenBody,
   SprayWindowAlertsResponse,
+  StripeWebhook200,
   Subscription,
   UnregisterPushTokenBody,
   UpdateAlertPreferencesBody,
@@ -290,6 +292,86 @@ export const useUpdateMe = <
   TContext
 > => {
   return useMutation(getUpdateMeMutationOptions(options));
+};
+
+/**
+ * Cancels any active Stripe subscription and permanently deletes all user data.
+ * @summary Delete current user account
+ */
+export const getDeleteMeUrl = () => {
+  return `/api/users/me`;
+};
+
+export const deleteMe = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteMeUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMe>>,
+    void
+  > = () => {
+    return deleteMe(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMe>>
+>;
+
+export type DeleteMeMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete current user account
+ */
+export const useDeleteMe = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteMeMutationOptions(options));
 };
 
 /**
@@ -3242,6 +3324,104 @@ export const useUpdateAlertPreferences = <
 };
 
 /**
+ * Token-based one-click unsubscribe. No auth required.
+ * @summary Unsubscribe from weekly digest emails
+ */
+export const getEmailUnsubscribeUrl = (params: EmailUnsubscribeParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/email/unsubscribe?${stringifiedParams}`
+    : `/api/email/unsubscribe`;
+};
+
+export const emailUnsubscribe = async (
+  params: EmailUnsubscribeParams,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getEmailUnsubscribeUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getEmailUnsubscribeQueryKey = (
+  params?: EmailUnsubscribeParams,
+) => {
+  return [`/api/email/unsubscribe`, ...(params ? [params] : [])] as const;
+};
+
+export const getEmailUnsubscribeQueryOptions = <
+  TData = Awaited<ReturnType<typeof emailUnsubscribe>>,
+  TError = ErrorType<void>,
+>(
+  params: EmailUnsubscribeParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof emailUnsubscribe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getEmailUnsubscribeQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof emailUnsubscribe>>
+  > = ({ signal }) => emailUnsubscribe(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof emailUnsubscribe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type EmailUnsubscribeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof emailUnsubscribe>>
+>;
+export type EmailUnsubscribeQueryError = ErrorType<void>;
+
+/**
+ * @summary Unsubscribe from weekly digest emails
+ */
+
+export function useEmailUnsubscribe<
+  TData = Awaited<ReturnType<typeof emailUnsubscribe>>,
+  TError = ErrorType<void>,
+>(
+  params: EmailUnsubscribeParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof emailUnsubscribe>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getEmailUnsubscribeQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get current user subscription
  */
 export const getGetCurrentSubscriptionUrl = () => {
@@ -3483,6 +3663,88 @@ export const useCreatePortalSession = <
   TContext
 > => {
   return useMutation(getCreatePortalSessionMutationOptions(options));
+};
+
+/**
+ * Receives and verifies Stripe webhook events. Not called by clients directly.
+ * @summary Stripe webhook receiver
+ */
+export const getStripeWebhookUrl = () => {
+  return `/api/stripe/webhook`;
+};
+
+export const stripeWebhook = async (
+  options?: RequestInit,
+): Promise<StripeWebhook200> => {
+  return customFetch<StripeWebhook200>(getStripeWebhookUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStripeWebhookMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeWebhook>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stripeWebhook>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["stripeWebhook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stripeWebhook>>,
+    void
+  > = () => {
+    return stripeWebhook(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StripeWebhookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stripeWebhook>>
+>;
+
+export type StripeWebhookMutationError = ErrorType<void>;
+
+/**
+ * @summary Stripe webhook receiver
+ */
+export const useStripeWebhook = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stripeWebhook>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stripeWebhook>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStripeWebhookMutationOptions(options));
 };
 
 /**

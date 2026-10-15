@@ -40,23 +40,14 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
 
   if (!location) {
     res.status(200).json({
-      currentWeather: {
-        temperature: 72, feelsLike: 70, humidity: 55, windSpeed: 8, windGust: 12,
-        cloudCover: 20, precipitation: 0, uvIndex: 5, weatherCode: 1,
-        weatherDescription: "Mainly clear", isDay: true, updatedAt: new Date().toISOString(),
-      },
-      todayForecast: {
-        date: new Date().toISOString().split("T")[0],
-        tempMax: 78, tempMin: 62, feelsLikeMax: 76, feelsLikeMin: 60,
-        precipitation: 0, precipitationProbability: 10, windSpeedMax: 12, windGustMax: 18,
-        cloudCover: 20, uvIndexMax: 7, sunrise: "6:30 AM", sunset: "7:45 PM",
-        weatherCode: 1, weatherDescription: "Mainly clear",
-      },
+      location: null,
+      currentWeather: null,
+      todayForecast: null,
       activeAlertCount: 0,
       activeAlerts: [],
       upcomingExtremes: [],
       weeklyPrecipitation: 0,
-      weeklyTempRange: { min: 58, max: 82 },
+      weeklyTempRange: null,
     });
     return;
   }

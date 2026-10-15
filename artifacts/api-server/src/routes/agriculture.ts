@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, inArray, desc } from "drizzle-orm";
-import { db, farmProfilesTable, locationsTable, alertsTable } from "@workspace/db";
+import { db, farmProfilesTable, locationsTable, alertsTable, subscriptionsTable } from "@workspace/db";
 import {
   GetFarmProfilesResponse,
   GetFarmProfileParams,
@@ -16,6 +16,7 @@ import {
 import { requireAuth, getOrCreateUser } from "../lib/auth";
 import { getAuth } from "@clerk/express";
 import { fetchForecast, computeAgricultureInsights } from "../lib/weather";
+import { getLimits } from "../lib/tierLimits";
 
 const router: IRouter = Router();
 
@@ -43,6 +44,14 @@ router.post("/agriculture/farm-profiles", requireAuth, async (req, res): Promise
   const parsed = CreateFarmProfileBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
+  const limits = getLimits(sub?.tier ?? "free");
+  const existingFarms = await db.select().from(farmProfilesTable).where(eq(farmProfilesTable.userId, userId));
+  if (existingFarms.length >= limits.maxFarmProfiles) {
+    res.status(403).json({ error: `Your ${sub?.tier ?? "free"} plan allows ${limits.maxFarmProfiles} farm profile(s). Upgrade for more.` });
     return;
   }
 
@@ -196,6 +205,14 @@ router.get("/agriculture/weekly-digest", requireAuth, async (req, res): Promise<
 
 router.get("/agriculture/insights/:farmProfileId", requireAuth, async (req, res): Promise<void> => {
   const userId = await getUserId(req);
+
+  const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
+  const limits = getLimits(sub?.tier ?? "free");
+  if (!limits.agricultureInsights) {
+    res.status(403).json({ error: "Agriculture insights require a paid plan. Upgrade to access." });
+    return;
+  }
+
   const params = GetAgricultureInsightsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -407,6 +424,13 @@ function dayLabel(date: string): string {
 router.get("/agriculture/spray-window-alerts", requireAuth, async (req, res): Promise<void> => {
   const userId = await getUserId(req);
 
+  const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
+  const limits = getLimits(sub?.tier ?? "free");
+  if (!limits.sprayWindowAlerts) {
+    res.status(403).json({ error: "Spray window alerts require a paid plan." });
+    return;
+  }
+
   const farms = await db
     .select()
     .from(farmProfilesTable)
@@ -494,6 +518,13 @@ function peakRiskDayLabel(dateStr: string, idx: number, isNight: boolean): strin
 
 router.get("/agriculture/peak-risk-alerts", requireAuth, async (req, res): Promise<void> => {
   const userId = await getUserId(req);
+
+  const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
+  const limits = getLimits(sub?.tier ?? "free");
+  if (!limits.peakRiskAlerts) {
+    res.status(403).json({ error: "Peak risk alerts require a paid plan." });
+    return;
+  }
 
   const farms = await db
     .select()

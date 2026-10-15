@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, getOrCreateUser } from "../lib/auth";
 import { getAuth } from "@clerk/express";
+import { getLimits } from "../lib/tierLimits";
 
 const router: IRouter = Router();
 
@@ -41,20 +42,18 @@ router.post("/locations", requireAuth, async (req, res): Promise<void> => {
 
   const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
   const tier = sub?.tier ?? "free";
+  const limits = getLimits(tier);
 
-  if (tier === "free") {
-    const existing = await db.select().from(locationsTable).where(eq(locationsTable.userId, userId));
-    if (existing.length >= 1) {
-      res.status(403).json({ error: "Free tier allows 1 location. Upgrade to Grower for more." });
-      return;
-    }
+  const existing = await db.select().from(locationsTable).where(eq(locationsTable.userId, userId));
+  if (existing.length >= limits.maxLocations) {
+    res.status(403).json({ error: `Your ${tier} plan allows ${limits.maxLocations} location(s). Upgrade for more.` });
+    return;
   }
 
   if (parsed.data.isDefault) {
     await db.update(locationsTable).set({ isDefault: false }).where(eq(locationsTable.userId, userId));
   }
 
-  const existing = await db.select().from(locationsTable).where(eq(locationsTable.userId, userId));
   const isDefault = existing.length === 0 ? true : (parsed.data.isDefault ?? false);
 
   const [loc] = await db.insert(locationsTable).values({

@@ -16,6 +16,8 @@ import Alerts from "@/pages/alerts";
 import Settings from "@/pages/settings";
 import Subscription from "@/pages/subscription";
 import NotFound from "@/pages/not-found";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
 import Layout from "@/components/layout";
 
 const queryClient = new QueryClient({
@@ -199,6 +201,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/locations" component={() => <ProtectedRoute component={Locations} />} />
           <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
           <Route path="/subscription" component={() => <ProtectedRoute component={Subscription} />} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/terms" component={Terms} />
           
           <Route component={NotFound} />
         </Switch>
