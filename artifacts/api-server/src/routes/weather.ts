@@ -15,7 +15,7 @@ import { fetchCurrentWeather, fetchForecast, fetchHourlyForecast } from "../lib/
 
 const router: IRouter = Router();
 
-router.get("/weather/current", async (req, res): Promise<void> => {
+router.get("/weather/current", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetCurrentWeatherQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -25,7 +25,7 @@ router.get("/weather/current", async (req, res): Promise<void> => {
   res.json(GetCurrentWeatherResponse.parse(weather));
 });
 
-router.get("/weather/forecast", async (req, res): Promise<void> => {
+router.get("/weather/forecast", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetForecastQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
